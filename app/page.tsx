@@ -28,9 +28,10 @@ type View = "home" | "dashboard" | "auth";
 type DashboardSection = "create" | "videos" | "assets" | "billing";
 
 type VideoSpec = {
+  available?: boolean;
   duration: string;
   mode: string;
-  poster: string;
+  poster?: string;
   prompt: string;
   resolution: string;
   src: string;
@@ -40,7 +41,6 @@ type VideoSpec = {
 const HERO_VIDEO: VideoSpec = {
   duration: "8 seconds",
   mode: "Text to video",
-  poster: "/media/morphly-hero-poster.webp",
   prompt:
     "A graphite performance coupe moves through a rain-soaked city at blue hour, controlled dolly shot, natural reflections.",
   resolution: "1024 × 576",
@@ -51,6 +51,7 @@ const HERO_VIDEO: VideoSpec = {
 const GALLERY_VIDEOS: VideoSpec[] = [
   HERO_VIDEO,
   {
+    available: false,
     duration: "5 seconds",
     mode: "Image to video",
     poster: "/media/morphly-image-motion-poster.webp",
@@ -60,15 +61,17 @@ const GALLERY_VIDEOS: VideoSpec[] = [
     title: "Portrait motion test",
   },
   {
+    available: false,
     duration: "8 seconds",
     mode: "Video to video",
     poster: "/media/morphly-video-transform-poster.webp",
     prompt: "Restyle the source footage with restrained cinematic color and stable movement.",
-    resolution: "768 × 432",
+    resolution: "768 × 448",
     src: "/media/morphly-video-transform.mp4",
     title: "Footage transformation",
   },
   {
+    available: false,
     duration: "3 seconds",
     mode: "Text to video",
     poster: "/media/morphly-product-study-poster.webp",
@@ -223,7 +226,9 @@ function ProductVideo({
   return (
     <article className={`mkt-video ${compact ? "compact" : ""}`}>
       <div className="mkt-video-frame">
-        {failed ? (
+        {video.available === false ? (
+          <AssetSlot filename={`public${video.src}`} />
+        ) : failed ? (
           <AssetSlot filename={`public${video.src}`} />
         ) : (
           <video
@@ -256,22 +261,11 @@ function ProductVideo({
 }
 
 function DashboardEvidence() {
-  const [failed, setFailed] = useState(false);
-
   return (
     <div className="mkt-dashboard-evidence">
-      {failed ? (
-        <AssetSlot filename="public/media/morphly-dashboard.webp">
-          <Settings2 />
-        </AssetSlot>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          alt="Morphly creator dashboard showing generation modes and render settings"
-          onError={() => setFailed(true)}
-          src="/media/morphly-dashboard.webp"
-        />
-      )}
+      <AssetSlot filename="public/media/morphly-dashboard.webp">
+        <Settings2 />
+      </AssetSlot>
     </div>
   );
 }

@@ -44,6 +44,22 @@ export function getDurationOptionBySeconds(seconds: number) {
   return DURATION_OPTIONS.find((option) => option.seconds === seconds) ?? null;
 }
 
+export function resolveDurationOption({
+  durationOption,
+  durationSeconds,
+}: {
+  durationOption?: string;
+  durationSeconds?: number;
+}) {
+  if (durationOption) {
+    return getDurationOption(durationOption);
+  }
+
+  return typeof durationSeconds === 'number'
+    ? getDurationOptionBySeconds(durationSeconds)
+    : null;
+}
+
 export function calculateLtxFrameCount(
   durationSeconds: number,
   fps: number,

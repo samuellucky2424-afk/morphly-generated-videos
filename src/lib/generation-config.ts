@@ -1,4 +1,4 @@
-import { calculateLtxFrameCount } from './generation-timing';
+import { calculateLtxFrameCount } from './generation-timing.ts';
 
 export {
   DEFAULT_DURATION_OPTION_ID,
@@ -6,8 +6,9 @@ export {
   DURATION_OPTIONS,
   getDurationOption,
   getDurationOptionBySeconds,
+  resolveDurationOption,
   type DurationOptionId,
-} from './generation-timing';
+} from './generation-timing.ts';
 
 export const GENERATION_MODES = [
   'text_to_video',
@@ -28,17 +29,17 @@ export const RESOLUTION_OPTIONS = [
   },
   {
     key: 'landscape-720',
-    label: '768 × 432',
-    aspectRatio: '16:9',
+    label: '768 × 448',
+    aspectRatio: '12:7',
     width: 768,
-    height: 432,
+    height: 448,
     costMultiplier: 1,
   },
   {
     key: 'portrait-720',
-    label: '432 × 768',
-    aspectRatio: '9:16',
-    width: 432,
+    label: '448 × 768',
+    aspectRatio: '7:12',
+    width: 448,
     height: 768,
     costMultiplier: 1,
   },

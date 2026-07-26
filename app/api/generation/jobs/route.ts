@@ -7,8 +7,8 @@ import {
   calculateGenerationCost,
   DURATION_OPTION_IDS,
   GENERATION_MODES,
-  getDurationOption,
   getResolution,
+  resolveDurationOption,
   RESOLUTION_OPTIONS,
 } from '@/src/lib/generation-config';
 import { reconcileGenerationJob } from '@/src/lib/generation-reconciliation';
@@ -19,7 +19,8 @@ export const dynamic = 'force-dynamic';
 
 const generationSchema = z.object({
   clientRequestId: z.uuid(),
-  durationOption: z.enum(DURATION_OPTION_IDS),
+  durationOption: z.enum(DURATION_OPTION_IDS).optional(),
+  durationSeconds: z.number().int().optional(),
   mode: z.enum(GENERATION_MODES),
   negativePrompt: z.string().trim().max(1200).optional(),
   presetId: z.uuid(),
@@ -180,6 +181,17 @@ export async function POST(request: NextRequest) {
     }
 
     const input = parsed.data;
+    const durationOption = resolveDurationOption(input);
+    if (!durationOption) {
+      return NextResponse.json(
+        {
+          error:
+            'Choose one of the available duration options: 4, 8, or 10 seconds.',
+        },
+        { status: 400 },
+      );
+    }
+
     const admin = createAdminClient();
     const { data: existingJob, error: existingError } = await admin
       .from('generation_jobs')
@@ -238,7 +250,6 @@ export async function POST(request: NextRequest) {
     }
 
     const resolution = getResolution(input.resolutionKey);
-    const durationOption = getDurationOption(input.durationOption);
     const presetFps = Number(preset.fps);
     const creditCost = calculateGenerationCost({
       mode: input.mode,
@@ -254,6 +265,8 @@ export async function POST(request: NextRequest) {
       !Number.isInteger(presetFps) ||
       presetFps <= 0 ||
       presetFps > 60 ||
+      resolution.width % 64 !== 0 ||
+      resolution.height % 64 !== 0 ||
       !creditCost
     ) {
       return NextResponse.json(
@@ -418,8 +431,10 @@ export async function POST(request: NextRequest) {
         num_inference_steps: Number(preset.inference_steps),
         guidance_scale: Number(preset.guidance_scale),
         seed,
-        image: input.mode === 'image_to_video' ? sourceUrl ?? undefined : undefined,
-        video: input.mode === 'video_to_video' ? sourceUrl ?? undefined : undefined,
+        image_path:
+          input.mode === 'image_to_video' ? sourceUrl ?? undefined : undefined,
+        video_path:
+          input.mode === 'video_to_video' ? sourceUrl ?? undefined : undefined,
         job_id: job.id,
         user_id: user.id,
         output_bucket: env.SUPABASE_VIDEO_BUCKET,
