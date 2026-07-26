@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/src/lib/env';
+import { extractOutputLocation } from '@/src/lib/generation-reconciliation';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -14,30 +15,6 @@ type RunPodPayload = {
   status?: string;
   workerId?: string;
 };
-
-function extractOutputUrl(value: unknown): string | null {
-  if (typeof value === 'string') {
-    return value.startsWith('https://') || value.startsWith('http://') ? value : null;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const url = extractOutputUrl(item);
-      if (url) return url;
-    }
-    return null;
-  }
-
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    for (const key of ['url', 'video_url', 'video', 'output']) {
-      const url = extractOutputUrl(record[key]);
-      if (url) return url;
-    }
-  }
-
-  return null;
-}
 
 function safeProgress(value: unknown, fallback: number) {
   const progress = Number(value);
@@ -95,8 +72,8 @@ export async function POST(request: Request) {
     }
 
     if (status === 'COMPLETED') {
-      const outputUrl = extractOutputUrl(payload.output);
-      if (!outputUrl) {
+      const outputLocation = extractOutputLocation(payload.output);
+      if (!outputLocation) {
         return new NextResponse('Completed job did not include an output URL', {
           status: 422,
         });
@@ -106,7 +83,7 @@ export async function POST(request: Request) {
         .from('generation_jobs')
         .update({
           runpod_status: status,
-          output_storage_path: outputUrl,
+          output_storage_path: outputLocation,
           runpod_execution_ms: payload.executionTime ?? null,
           runpod_delay_ms: payload.delayTime ?? null,
           runpod_worker_id: payload.workerId ?? null,
