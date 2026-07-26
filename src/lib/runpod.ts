@@ -13,7 +13,12 @@ interface RunPodInput {
   video?: string; // For Video to Video
 }
 
-export async function submitRunPodJob(jobId: string, input: RunPodInput) {
+interface RunPodJobResponse {
+  id: string;
+  status: string;
+}
+
+export async function submitRunPodJob(jobId: string, input: RunPodInput): Promise<RunPodJobResponse> {
   const url = `https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`;
   
   // Use our App URL for the webhook
@@ -37,6 +42,6 @@ export async function submitRunPodJob(jobId: string, input: RunPodInput) {
     throw new Error('Failed to submit job to RunPod');
   }
 
-  const data = await response.json();
+  const data = await response.json() as RunPodJobResponse;
   return data; // contains id (runpod_job_id) and status
 }

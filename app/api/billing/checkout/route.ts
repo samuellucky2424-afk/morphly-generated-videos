@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/src/lib/auth';
 import { createClient } from '@/src/lib/supabase/server';
 import { generateCheckoutUrl } from '@/src/lib/flutterwave';
-import { v4 as uuidv4 } from 'uuid';
 import { env } from '@/src/lib/env';
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { packageId } = await request.json();
+    const { packageId } = await request.json() as { packageId?: string };
 
     if (!packageId) {
       return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Create pending payment record
-    const txRef = `tx-${uuidv4()}`;
+    const txRef = `tx-${crypto.randomUUID()}`;
     const creditsToGrant = pkg.base_credits + pkg.bonus_credits;
     
     const { data: payment, error: paymentError } = await supabase
@@ -53,10 +52,8 @@ export async function POST(request: Request) {
     // 3. Generate Flutterwave Checkout URL
     const checkoutUrl = await generateCheckoutUrl(
       txRef,
-      pkg.price_minor / 100, // Flutterwave expects major currency units (e.g., NGN instead of Kobo, but usually we just divide by 100 if we stored minor units)
-      // wait, the prompt says "price_minor", so if price is 500,000 NGN, maybe we stored it as 50,000,000 kobo? 
-      // The seed data has 500000 for $500,000 ? Wait, Starter is 5,000 NGN (which is ~3 USD), so 500,000 in minor means 5,000.00 NGN.
       pkg.price_minor / 100,
+      pkg.currency,
       user.email || '',
       user.user_metadata?.full_name || 'Morphly User',
       `${env.APP_URL}/?billing_status=success`

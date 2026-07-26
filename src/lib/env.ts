@@ -15,7 +15,9 @@ const envSchema = z.object({
   CRON_SECRET: z.string().min(1),
 });
 
-export const env = envSchema.parse({
+type Env = z.infer<typeof envSchema>;
+
+const rawEnv = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
@@ -28,4 +30,15 @@ export const env = envSchema.parse({
   FLW_SECRET_HASH: process.env.FLW_SECRET_HASH,
   APP_URL: process.env.APP_URL,
   CRON_SECRET: process.env.CRON_SECRET,
+} satisfies Record<keyof Env, string | undefined>;
+
+export const env = new Proxy({} as Env, {
+  get(_target, property) {
+    if (typeof property !== 'string' || !(property in envSchema.shape)) {
+      return undefined;
+    }
+
+    const key = property as keyof Env;
+    return envSchema.shape[key].parse(rawEnv[key]);
+  },
 });
