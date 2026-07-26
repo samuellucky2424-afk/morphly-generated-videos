@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/src/lib/auth';
+import { AuthenticationRequiredError, requireApiUser } from '@/src/lib/auth';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 import { submitRunPodJob } from '@/src/lib/runpod';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await requireApiUser();
     const supabase = createAdminClient();
     
     // Fetch user jobs ordered by newest
@@ -18,16 +20,18 @@ export async function GET() {
 
     if (error) throw error;
     return NextResponse.json(data);
-  } catch (error: any) {
-    if (error.message === 'NEXT_REDIRECT') return new NextResponse('Unauthorized', { status: 401 });
+  } catch (error: unknown) {
+    if (error instanceof AuthenticationRequiredError) {
+      return NextResponse.json({ error: 'Sign in to view generation jobs.' }, { status: 401 });
+    }
     console.error('Error fetching jobs:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json({ error: 'Generation jobs could not be loaded.' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireApiUser();
     const { presetId, prompt, negativePrompt, sourceAssetPath } = await request.json() as {
       presetId?: string;
       prompt?: string;
@@ -135,9 +139,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'GPU allocation failed. Credits refunded.' }, { status: 500 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generation POST error:', error);
-    if (error.message === 'NEXT_REDIRECT') return new NextResponse('Unauthorized', { status: 401 });
+    if (error instanceof AuthenticationRequiredError) {
+      return NextResponse.json({ error: 'Sign in to generate a video.' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

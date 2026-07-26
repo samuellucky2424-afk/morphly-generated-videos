@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/src/lib/auth';
+import { AuthenticationRequiredError, requireApiUser } from '@/src/lib/auth';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 import { generateCheckoutUrl } from '@/src/lib/flutterwave';
 import { env } from '@/src/lib/env';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireApiUser();
     const { packageId } = await request.json() as { packageId?: string };
 
     if (!packageId) {
@@ -64,10 +66,10 @@ export async function POST(request: Request) {
 
     // 5. Return checkout URL to client
     return NextResponse.json({ checkoutUrl });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Checkout error:', error);
-    if (error.message === 'NEXT_REDIRECT') {
-      return new NextResponse('Unauthorized', { status: 401 });
+    if (error instanceof AuthenticationRequiredError) {
+      return NextResponse.json({ error: 'Sign in to purchase credits.' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

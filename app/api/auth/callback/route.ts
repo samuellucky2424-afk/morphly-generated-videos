@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/src/lib/supabase/server'
-import { createAdminClient } from '@/src/lib/supabase/admin'
+import { bootstrapUser } from '@/src/lib/user-bootstrap'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -22,13 +22,14 @@ export async function GET(request: Request) {
       
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const admin = createAdminClient();
-        await admin.rpc('bootstrap_new_user', {
-          p_user_id: user.id,
-          p_email: user.email,
-          p_display_name: user.user_metadata?.full_name || 'User',
-          p_referral_code_used: user.user_metadata?.referral_code_used || null
-        });
+        try {
+          await bootstrapUser(user);
+        } catch (bootstrapError) {
+          console.error('Auth callback account setup failed:', bootstrapError);
+          return NextResponse.redirect(
+            `${origin}/?error=account-setup-failed`,
+          );
+        }
       }
 
       return NextResponse.redirect(`${origin}${next}`)

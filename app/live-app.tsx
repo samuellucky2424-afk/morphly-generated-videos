@@ -826,7 +826,7 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
     const supabase = createClient();
 
     if (signup) {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -842,6 +842,24 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
         setLoading(false);
         return;
       }
+
+      if (data.session) {
+        try {
+          await requestJson<{ initialized: boolean }>("/api/auth/bootstrap", {
+            method: "POST",
+          });
+          setView("dashboard");
+        } catch (bootstrapError) {
+          setErrorMessage(
+            bootstrapError instanceof Error
+              ? bootstrapError.message
+              : "Your account could not be initialized.",
+          );
+        }
+        setLoading(false);
+        return;
+      }
+
       setDone(true);
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -853,6 +871,21 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
         setLoading(false);
         return;
       }
+
+      try {
+        await requestJson<{ initialized: boolean }>("/api/auth/bootstrap", {
+          method: "POST",
+        });
+      } catch (bootstrapError) {
+        setErrorMessage(
+          bootstrapError instanceof Error
+            ? bootstrapError.message
+            : "Your account could not be initialized.",
+        );
+        setLoading(false);
+        return;
+      }
+
       setView("dashboard");
     }
 
@@ -945,11 +978,12 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
               <div className="or">
                 <span>or continue with email</span>
               </div>
-              <form onSubmit={handleSubmit}>
+              <form autoComplete="on" onSubmit={handleSubmit}>
                 {signup && (
                   <label>
                     Full name
                     <input
+                      autoComplete="name"
                       name="fullname"
                       required
                       placeholder="Lucky Samuel"
@@ -959,6 +993,7 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
                 <label>
                   Email address
                   <input
+                    autoComplete="username"
                     name="email"
                     type="email"
                     required
@@ -968,6 +1003,7 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
                 <label>
                   Password
                   <input
+                    autoComplete={signup ? "new-password" : "current-password"}
                     name="password"
                     type="password"
                     required
@@ -978,7 +1014,11 @@ export function LiveAuth({ setView }: { setView: (value: View) => void }) {
                 {signup && (
                   <label>
                     Referral code <small>Optional</small>
-                    <input name="refcode" placeholder="MORPHLY-2026" />
+                    <input
+                      autoComplete="off"
+                      name="refcode"
+                      placeholder="MORPHLY-2026"
+                    />
                   </label>
                 )}
                 {errorMessage && (
