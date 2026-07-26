@@ -1,0 +1,86 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #090c0a;
+  --panel: #0d120f;
+  --white: #ffffff;
+  --lime: #dfff45;
+  --yellow: #ffd829;
+  --line: #ffffff20;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--white);
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+/* Base button styles to keep the app working */
+.lime-btn {
+  @apply bg-gradient-to-br from-[#dfff45] to-[#ffd829] text-[#0a0d0a] font-bold py-3 px-5 rounded-xl inline-flex items-center gap-2 hover:-translate-y-0.5 transition-transform shadow-[0_10px_35px_rgba(223,255,69,0.1)];
+}
+.ghost-btn {
+  @apply border border-white/20 bg-white/5 rounded-xl py-3 px-5 inline-flex items-center gap-2 font-bold hover:bg-white/10 hover:border-white/30 transition-colors;
+}
+.text-btn {
+  @apply bg-transparent border-none text-[#aeb6af] text-sm hover:text-[#dfff45];
+}
+
+/* Nav */
+.nav-wrap { @apply fixed z-30 top-0 w-full p-4 bg-gradient-to-b from-[#080b0ae8] to-transparent; }
+.nav { @apply h-16 max-w-7xl mx-auto flex items-center justify-between px-5 border border-white/10 rounded-2xl bg-[#0b0f0dd9] backdrop-blur-md; }
+.logo { @apply flex items-center gap-2 text-xl font-extrabold bg-transparent border-none; }
+.logo-mark { @apply w-8 h-8 grid place-items-center rounded-lg bg-[#dfff45] text-[#080b0a] shadow-[0_0_28px_rgba(223,255,69,0.2)]; }
+.logo em { @apply not-italic text-[#080b0a] bg-[#dfff45] text-[9px] rounded px-1 py-0.5 tracking-wider; }
+
+/* Dashboard / App */
+.app-shell { @apply min-h-screen bg-[#090c0a] flex flex-col md:flex-row; }
+.side { @apply w-full md:w-56 shrink-0 md:h-screen md:sticky top-0 p-6 border-b md:border-b-0 md:border-r border-white/10 bg-[#0b0f0d] flex flex-col gap-1; }
+.side-label { @apply font-mono text-[9px] tracking-[0.17em] text-[#555e56] mx-3 mb-2; }
+.side button, .side-bottom button { @apply w-full border-none bg-transparent flex items-center gap-3 p-3 rounded-lg text-[#7f8980] text-sm text-left hover:bg-white/5; }
+.side button.active { @apply bg-[#dfff4510] text-[#dfff45]; }
+.side-bottom { @apply mt-auto border-t border-white/10 pt-4; }
+.app-main { @apply flex-1 min-w-0; }
+.app-top { @apply h-20 border-b border-white/10 flex items-center justify-between px-8; }
+
+/* Utility */
+.rotate { @apply rotate-180; }
+.panel-head h2 { @apply text-lg font-semibold; }
+.dropzone { @apply h-28 border border-dashed border-[#3c473d] rounded-xl flex flex-col items-center justify-center text-[#7c867d] mb-4; }
+.control-grid { @apply grid grid-cols-1 sm:grid-cols-2 gap-3 my-4; }
+.control-grid label { @apply text-xs text-[#8d968e]; }
+.control-grid select, .control-grid input { @apply block w-full h-10 px-3 mt-1 text-xs border border-white/10 bg-[#0a0e0c] text-[#cbd2cb] rounded-lg outline-none focus:border-white/30; }
+
+textarea, input { @apply border border-white/10 bg-[#0a0e0c] text-[#cbd2cb] rounded-lg outline-none focus:border-white/30; }
+textarea { @apply w-full min-h-[142px] p-3 text-xs leading-relaxed resize-y; }
+
+.estimate { @apply flex justify-between border-t border-white/10 pt-4 text-xs; }
+.generate-btn { @apply w-full h-12 border-none rounded-xl bg-gradient-to-br from-[#dfff45] to-[#ffd829] text-xs font-extrabold flex items-center justify-center gap-2 text-[#080b09] mt-4; }
+.preview-screen { @apply aspect-video rounded-xl overflow-hidden bg-[#070908] grid place-items-center relative border border-white/10; }
+.preview-actions button { @apply flex-1 h-10 border border-white/10 bg-[#111612] rounded-lg flex items-center justify-center gap-2 text-xs; }
+.job-grid { @apply grid grid-cols-1 md:grid-cols-3 gap-3; }
+.job-grid article { @apply grid grid-cols-[90px_1fr_auto] gap-3 items-center p-2.5 bg-[#0d110f] border border-white/10 rounded-xl; }
+.job-thumb { @apply h-[60px] rounded-lg grid place-items-center bg-[#263229]; }
+.job-grid h3 { @apply text-xs m-0 mb-1 font-semibold; }
+.job-grid p { @apply text-[10px] text-[#707971] m-0 mb-1; }
+.job-grid span { @apply text-[9px] px-2 py-1 rounded-full bg-[#dfff4510] text-[#dfff45]; }
+
+.stat-grid { @apply grid grid-cols-1 md:grid-cols-3 gap-3 mb-4; }
+.stat-grid article { @apply border border-white/10 bg-[#0d110f] rounded-xl p-5 flex flex-col; }
+.stat-grid span { @apply text-[#737d74] text-xs; }
+.stat-grid b { @apply text-2xl my-2; }
+.stat-grid small { @apply text-[10px] text-[#69726a]; }
+
+/* Auth */
+.auth-page { @apply min-h-screen grid grid-cols-1 lg:grid-cols-2 relative; }
+.auth-brand { @apply p-12 lg:p-20 hidden lg:flex flex-col justify-between bg-gradient-to-br from-[#1b2210] to-[#0b0f0c]; }
+.auth-form-wrap { @apply grid place-items-center bg-[#0d110f] p-8; }
+.auth-form { @apply w-full max-w-[420px]; }
+.auth-form label { @apply block text-sm mb-4; }
+.auth-form input { @apply w-full h-12 px-4 mt-2 border border-white/10 bg-[#0a0e0c] rounded-lg focus:border-[#dfff4560]; }
+.google-btn { @apply w-full h-12 border border-white/10 bg-[#111612] rounded-lg flex items-center justify-center gap-3 font-semibold mt-6 mb-4 hover:bg-white/5; }
+
