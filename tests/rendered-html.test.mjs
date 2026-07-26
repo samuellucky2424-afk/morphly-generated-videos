@@ -82,3 +82,24 @@ test("admin routes fail closed without a verified administrator session", async 
   assert.notEqual(sessionResponse.status, 200);
   assert.equal((await sessionResponse.json()).authorized, false);
 });
+
+test("authenticated product APIs return 401 instead of 500 without a session", async () => {
+  const worker = await loadWorker("product-auth");
+  const requests = [
+    new Request("http://localhost/api/wallet"),
+    new Request("http://localhost/api/wallet/transactions"),
+    new Request("http://localhost/api/generation/jobs"),
+    new Request("http://localhost/api/auth/bootstrap", { method: "POST" }),
+  ];
+
+  for (const request of requests) {
+    const response = await worker.fetch(request, runtimeEnv, executionContext);
+    assert.equal(
+      response.status,
+      401,
+      `${new URL(request.url).pathname} should reject an anonymous request`,
+    );
+    const payload = await response.json();
+    assert.equal(typeof payload.error, "string");
+  }
+});
