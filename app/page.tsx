@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { LiveAuth, LiveDashboard } from "./live-app";
 
-type View = "home" | "dashboard" | "admin" | "auth";
+type View = "home" | "dashboard" | "auth";
 type Mode = "Text to video" | "Image to video" | "Video to video";
 
 const jobs = [
@@ -112,7 +112,7 @@ function Home({ setView }: { setView: (v: View) => void }) {
   </main><Footer setView={setView}/></>;
 }
 
-function Footer({setView}:{setView:(v:View)=>void}) { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><button onClick={()=>setView("admin")}>Admin</button><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
+function Footer({setView}:{setView:(v:View)=>void}) { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><a href="/admin/login">Admin</a><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
 
 function Side({active,setActive,admin=false}:{active:string,setActive:(x:string)=>void,admin?:boolean}) {
  const items = admin ? [["Overview",LayoutDashboard],["Users",Users],["Generations",Film],["Billing",CreditCard],["Analytics",BarChart3],["System health",Gauge],["Settings",Settings]] : [["Create",WandSparkles],["My videos",Film],["Assets",Layers3],["Billing",CreditCard],["Settings",Settings]];
@@ -134,15 +134,6 @@ function AccountPage({active}:{active:string}) {
  return <div className="content-page"><div className="empty-state"><div><Film/></div><h2>{active}</h2><p>{active==="My videos"?"Every render, version and export—organized in one place.":"Upload and manage reusable images, clips and brand assets."}</p><button className="lime-btn"><Plus/> Add new</button></div></div>;
 }
 
-function Admin({setView}:{setView:(v:View)=>void}) {
- const [active,setActive]=useState("Overview");
- return <div className="app-shell admin-shell"><Side active={active} setActive={setActive} admin/><div className="app-main"><div className="app-top"><button className="back-mobile" onClick={()=>setView("home")}><X/></button><div><small>ADMIN CONSOLE</small><h1>{active}</h1></div><div className="top-tools"><span className="health"><i/> All systems operational</span><button><Bell/></button><button className="avatar">LS</button></div></div><div className="content-page">
- <div className="admin-hero"><div><span>Sunday, July 26</span><h2>Good morning, Lucky.</h2><p>Here’s what’s happening across Morphly today.</p></div><button className="lime-btn"><Download/> Export report</button></div>
- <div className="stat-grid four">{[["Total users","12,482","+12.4%"],["Videos generated","48,290","+18.7%"],["Revenue","$84,240","+9.2%"],["Credits consumed","2.4M","+21.5%"]].map((x,i)=><article key={x[0]}><div className={`stat-icon si${i}`}>{i===0?<Users/>:i===1?<Film/>:i===2?<CreditCard/>:<Zap/>}</div><span>{x[0]}</span><b>{x[1]}</b><small className="up">{x[2]} <em>vs last month</em></small></article>)}</div>
- <div className="admin-grid"><section className="chart-card"><div className="card-title"><div><h2>Platform growth</h2><p>Revenue and generation volume</p></div><select><option>Last 7 days</option></select></div><div className="chart"><div className="chart-lines"/><svg viewBox="0 0 600 180" preserveAspectRatio="none"><defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#dffe47" stopOpacity=".35"/><stop offset="100%" stopColor="#dffe47" stopOpacity="0"/></linearGradient></defs><path d="M0 160 C70 145 80 80 140 105 S220 125 270 70 S350 95 400 45 S500 75 600 15 L600 180 L0 180Z" fill="url(#grad)"/><path d="M0 160 C70 145 80 80 140 105 S220 125 270 70 S350 95 400 45 S500 75 600 15" fill="none" stroke="#dffe47" strokeWidth="4"/></svg><div className="xlabels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div></section><section className="activity-card"><div className="card-title"><div><h2>Live activity</h2><p>Latest platform events</p></div><button>View all</button></div>{[["New user signup","Amara O. joined Creator","2m"],["Video completed","Product launch · 1080p","4m"],["Payment received","Creator Pro · $90","8m"],["Credit warning","David K. · 42 left","12m"]].map((x,i)=><div className="activity" key={x[0]}><i className={`act${i}`}>{i===0?<Users/>:i===1?<Check/>:i===2?<CreditCard/>:<Zap/>}</i><div><b>{x[0]}</b><span>{x[1]}</span></div><small>{x[2]}</small></div>)}</section></div>
- <div className="users-card"><div className="card-title"><div><h2>Recent users</h2><p>Newest accounts across the platform</p></div><button>Manage users <ArrowRight/></button></div><div className="user-table"><div className="thead"><span>User</span><span>Plan</span><span>Credits</span><span>Status</span><span>Joined</span></div>{[["AO","Amara Obi","Creator Pro","4,620","Active","Today"],["DK","David Kim","Starter","42","Low credits","Today"],["NS","Nora Smith","Agency","18,400","Active","Yesterday"],["JM","Jay Mensah","Free","50","Trial","Yesterday"]].map(u=><div className="trow" key={u[1]}><span><i>{u[0]}</i><b>{u[1]}</b></span><span>{u[2]}</span><span>{u[3]}</span><span><em>{u[4]}</em></span><span>{u[5]}</span></div>)}</div></div></div></div></div>;
-}
-
 function Auth({setView}:{setView:(v:View)=>void}) {
  const [signup,setSignup]=useState(true); const [done,setDone]=useState(false);
  return <div className="auth-page"><button className="auth-back" onClick={()=>setView("home")}><ArrowRight/> Back to home</button><div className="auth-brand"><Logo/><div className="auth-visual"><div className="ring r1"/><div className="ring r2"/><div className="auth-spark"><Sparkles/></div></div><div><span>MAKE THE IMPOSSIBLE VISIBLE</span><h1>Every frame begins<br/>with an idea.</h1><p>Bring yours to life with LTX 2.3—faster than the thought that started it.</p></div></div><div className="auth-form-wrap"><div className="auth-form"><div className="mobile-logo"><Logo/></div>{done?<div className="success"><div><Check/></div><h2>Welcome to Morphly.</h2><p>Your workspace is ready with 50 free credits.</p><button className="lime-btn" onClick={()=>setView("dashboard")}>Open your studio <ArrowRight/></button></div>:<><span className="auth-tag">{signup?"START CREATING":"WELCOME BACK"}</span><h2>{signup?"Create your account":"Sign in to Morphly"}</h2><p>{signup?"50 free credits. No credit card required.":"Continue creating where you left off."}</p><button className="google-btn"><span>G</span> Continue with Google</button><div className="or"><span>or continue with email</span></div><form onSubmit={e=>{e.preventDefault();setDone(true)}}>{signup&&<label>Full name<input required placeholder="Lucky Samuel"/></label>}<label>Email address<input type="email" required placeholder="you@company.com"/></label><label>Password<input type="password" required minLength={8} placeholder="At least 8 characters"/></label>{signup&&<label>Referral code <small>Optional</small><input placeholder="MORPHLY-2026"/></label>}<button className="lime-btn" type="submit">{signup?"Create free account":"Sign in"} <ArrowRight/></button></form><p className="switch">{signup?"Already have an account?":"New to Morphly?"} <button onClick={()=>setSignup(!signup)}>{signup?"Sign in":"Create account"}</button></p><small className="legal">By continuing, you agree to Morphly’s Terms of Service and Privacy Policy.</small></>}</div></div></div>;
@@ -150,6 +141,7 @@ function Auth({setView}:{setView:(v:View)=>void}) {
 
 export default function HomePage() {
  const [view,setView]=useState<View>("home");
+ useEffect(()=>{if(new URLSearchParams(location.search).get("auth")==="signup"){setView("auth")}},[]);
  useEffect(()=>{scrollTo(0,0)},[view]);
- return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:view==="admin"?<Admin setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
+ return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
 }

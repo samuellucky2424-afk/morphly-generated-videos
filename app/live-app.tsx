@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/src/lib/supabase/client";
 
-type View = "home" | "dashboard" | "admin" | "auth";
+type View = "home" | "dashboard" | "auth";
 type Mode = "Text to video" | "Image to video" | "Video to video";
 
 interface Wallet {
