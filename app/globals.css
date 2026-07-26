@@ -68,6 +68,9 @@
 .admin-table-empty{padding:28px 10px;text-align:center;color:#6f7870;font-size:9px}
 .admin-jobs-table .trow>span:first-child b{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .admin-jobs-table .trow i svg{width:12px}
+.admin-generation-duration{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.admin-generation-duration b{color:#eef4ee;font-size:9px;font-weight:600}
+.admin-generation-duration small{color:#788279;font-size:7px}
 .profile-card small{display:block;margin-top:5px;color:var(--lime);font-size:9px;text-transform:capitalize}
 .admin-shell .side .logo{text-decoration:none}
 .admin-shell .side-bottom>button:first-of-type{color:#ff9a9a}

@@ -4,11 +4,11 @@ interface RunPodInput {
   mode: 'text_to_video' | 'image_to_video' | 'video_to_video';
   prompt: string;
   negative_prompt?: string;
-  num_frames: number;
+  frames: number;
   width: number;
   height: number;
   fps: number;
-  duration_seconds: number;
+  requested_duration_seconds: number;
   num_inference_steps: number;
   guidance_scale: number;
   seed?: number;

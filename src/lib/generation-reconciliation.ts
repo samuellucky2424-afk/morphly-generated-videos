@@ -1,5 +1,9 @@
 import { env } from '@/src/lib/env';
 import {
+  validateCompletionTiming,
+  type CompletionTimingValidation,
+} from '@/src/lib/generation-timing';
+import {
   getRunPodJobStatus,
   type RunPodStatusResponse,
 } from '@/src/lib/runpod';
@@ -8,8 +12,11 @@ import { createAdminClient } from '@/src/lib/supabase/admin';
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 export type ReconciliableGenerationJob = {
+  fps: number;
+  frames: number;
   id: string;
   prompt: string;
+  requested_duration_seconds: number;
   runpod_job_id: string | null;
   started_at: string | null;
   status: string;
@@ -183,10 +190,34 @@ async function applyCompletedStatus(
   provider: RunPodStatusResponse | null,
   outputLocation: string,
 ) {
+  const timingValidation = validateCompletionTiming({
+    expectedFps: Number(job.fps),
+    expectedFrames: Number(job.frames),
+    expectedRequestedDurationSeconds: Number(
+      job.requested_duration_seconds,
+    ),
+    output: provider?.output,
+  });
+
+  if (!timingValidation.ok) {
+    await applyInvalidCompletionTiming(
+      admin,
+      job,
+      provider,
+      timingValidation,
+    );
+    return;
+  }
+
   const now = new Date().toISOString();
+  const timing = timingValidation.metadata;
   const { error: updateError } = await admin
     .from('generation_jobs')
     .update({
+      actual_duration_seconds: timing.actualDurationSeconds,
+      requested_duration_seconds: timing.requestedDurationSeconds,
+      output_fps: timing.fps,
+      output_frames: timing.frames,
       runpod_status: provider?.status?.toUpperCase() || 'COMPLETED',
       output_storage_path: normalizeOutputLocation(outputLocation),
       runpod_execution_ms: provider?.executionTime ?? null,
@@ -217,6 +248,70 @@ async function applyCompletedStatus(
     type: 'generation_completed',
     title: 'Your video is ready',
     message: job.prompt.slice(0, 140),
+  });
+}
+
+async function applyInvalidCompletionTiming(
+  admin: AdminClient,
+  job: ReconciliableGenerationJob,
+  provider: RunPodStatusResponse | null,
+  validation: Exclude<CompletionTimingValidation, { ok: true }>,
+) {
+  console.warn(
+    `Generation ${job.id} failed completion timing validation: ${validation.reason}`,
+    validation.metadata,
+  );
+
+  const { error: refundError } = await admin.rpc(
+    'refund_generation_reservation',
+    {
+      p_generation_id: job.id,
+      p_terminal_status: 'failed',
+    },
+  );
+
+  if (refundError) {
+    throw refundError;
+  }
+
+  const now = new Date().toISOString();
+  const timing = validation.metadata;
+  const { error: updateError } = await admin
+    .from('generation_jobs')
+    .update({
+      actual_duration_seconds:
+        timing?.actualDurationSeconds ?? null,
+      error_code: validation.reason,
+      error_message:
+        validation.reason === 'actual-duration-mismatch'
+          ? `The generated MP4 duration (${timing?.actualDurationSeconds.toFixed(3)}s) did not match the requested duration (${job.requested_duration_seconds}s).`
+          : 'The render provider returned incomplete or inconsistent video timing metadata.',
+      output_fps: timing?.fps ?? null,
+      output_frames: timing?.frames ?? null,
+      progress_percent: 0,
+      requested_duration_seconds: Number(
+        job.requested_duration_seconds,
+      ),
+      runpod_delay_ms: provider?.delayTime ?? null,
+      runpod_execution_ms: provider?.executionTime ?? null,
+      runpod_status: 'COMPLETED_DURATION_INVALID',
+      runpod_worker_id: provider?.workerId ?? null,
+      last_runpod_check_at: now,
+      updated_at: now,
+    })
+    .eq('id', job.id)
+    .eq('user_id', job.user_id);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  await createNotificationOnce(admin, {
+    generationId: job.id,
+    userId: job.user_id,
+    type: 'generation_failed',
+    title: 'Video duration validation failed',
+    message: 'The generated video did not match the requested duration. Reserved credits were returned.',
   });
 }
 
@@ -305,8 +400,8 @@ export async function reconcileGenerationJob(
   const providerStatus = provider?.status?.toUpperCase() ?? '';
   const providerOutput = extractOutputLocation(provider?.output);
   if (
-    (providerStatus === 'COMPLETED' && providerOutput) ||
-    storedOutput
+    providerStatus === 'COMPLETED' &&
+    (providerOutput || storedOutput)
   ) {
     await applyCompletedStatus(
       admin,

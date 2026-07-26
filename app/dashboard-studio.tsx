@@ -41,9 +41,12 @@ import { normalizeAssetMimeType } from "@/src/lib/assets";
 import { ApiRequestError, requestJson } from "@/src/lib/client-api";
 import {
   calculateGenerationCost,
+  DEFAULT_DURATION_OPTION_ID,
   DURATION_OPTIONS,
-  FPS_OPTIONS,
+  getDurationOption,
+  getDurationOptionBySeconds,
   RESOLUTION_OPTIONS,
+  type DurationOptionId,
   type GenerationMode,
   type ResolutionKey,
 } from "@/src/lib/generation-config";
@@ -68,6 +71,7 @@ type GenerationPreset = {
   action: GenerationMode;
   credit_cost: number;
   description: string | null;
+  fps: number;
   guidance_scale: number;
   id: string;
   inference_steps: number;
@@ -77,6 +81,7 @@ type GenerationPreset = {
 
 type GenerationJob = {
   action: GenerationMode;
+  actual_duration_seconds?: number | null;
   aspect_ratio: string;
   completed_at?: string | null;
   created_at: string;
@@ -90,16 +95,20 @@ type GenerationJob = {
   id: string;
   negative_prompt?: string | null;
   output_url?: string | null;
+  output_fps?: number | null;
+  output_frames?: number | null;
   preset_id: string;
   progress_percent: number;
   prompt: string;
   request_snapshot?: {
     configuration?: {
+      duration_option?: DurationOptionId;
       duration_seconds?: number;
       fps?: number;
       resolution_key?: ResolutionKey;
     };
   } | null;
+  requested_duration_seconds: number;
   runpod_delay_ms?: number | null;
   runpod_execution_ms?: number | null;
   seed?: number | null;
@@ -261,6 +270,24 @@ function jobTimingLabel(job: GenerationJob, now: number) {
   return `${label} ${formatDuration(Math.max(0, endedAt - startedAt))}`;
 }
 
+function completedDurationSeconds(job: GenerationJob) {
+  if (
+    job.status === "completed" &&
+    job.actual_duration_seconds !== null &&
+    job.actual_duration_seconds !== undefined
+  ) {
+    return job.actual_duration_seconds;
+  }
+
+  return job.requested_duration_seconds || job.duration_seconds;
+}
+
+function formatVideoDuration(seconds: number) {
+  return Number.isInteger(seconds)
+    ? `${seconds}s`
+    : `${seconds.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}s`;
+}
+
 function statusTone(status: string) {
   if (status === "completed") return "green";
   if (["failed", "timed_out"].includes(status)) return "purple";
@@ -373,8 +400,9 @@ export function DashboardStudio({
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [resolutionKey, setResolutionKey] = useState<ResolutionKey>("landscape-720");
-  const [durationSeconds, setDurationSeconds] = useState<number>(5);
-  const [fps, setFps] = useState<number>(24);
+  const [durationOptionId, setDurationOptionId] = useState<DurationOptionId>(
+    DEFAULT_DURATION_OPTION_ID,
+  );
   const [seed, setSeed] = useState("");
   const [sourceAssetIds, setSourceAssetIds] = useState({
     image_to_video: "",
@@ -408,6 +436,11 @@ export function DashboardStudio({
   );
   const activePreset =
     modePresets.find((preset) => preset.id === activePresetId) ?? modePresets[0] ?? null;
+  const durationOption =
+    getDurationOption(durationOptionId) ??
+    getDurationOption(DEFAULT_DURATION_OPTION_ID)!;
+  const durationSeconds = durationOption.seconds;
+  const fps = activePreset ? Number(activePreset.fps) : 0;
   const matchingAssets = useMemo(
     () =>
       assets.filter((asset) =>
@@ -808,8 +841,7 @@ export function DashboardStudio({
           prompt: prompt.trim(),
           negativePrompt: negativePrompt.trim() || undefined,
           resolutionKey,
-          durationSeconds,
-          fps,
+          durationOption: durationOption.id,
           seed: seed ? Number(seed) : null,
           sourceAssetId: sourceAsset?.id ?? null,
         }),
@@ -835,8 +867,15 @@ export function DashboardStudio({
     setActivePresetId(job.preset_id);
     const configuration = job.request_snapshot?.configuration;
     if (configuration?.resolution_key) setResolutionKey(configuration.resolution_key);
-    if (configuration?.duration_seconds) setDurationSeconds(configuration.duration_seconds);
-    if (configuration?.fps) setFps(configuration.fps);
+    const copiedDurationOption =
+      (configuration?.duration_option &&
+        getDurationOption(configuration.duration_option)) ||
+      getDurationOptionBySeconds(
+        configuration?.duration_seconds ||
+          job.requested_duration_seconds ||
+          job.duration_seconds,
+      );
+    if (copiedDurationOption) setDurationOptionId(copiedDurationOption.id);
     selectSourceAsset(job.action, job.source_asset_id || "");
     setSelectedJobId(job.id);
     navigate("Create");
@@ -1293,24 +1332,24 @@ export function DashboardStudio({
                   <label>
                     Duration
                     <select
-                      onChange={(event) => setDurationSeconds(Number(event.target.value))}
-                      value={durationSeconds}
+                      onChange={(event) =>
+                        setDurationOptionId(event.target.value as DurationOptionId)
+                      }
+                      value={durationOption.id}
                     >
-                      {DURATION_OPTIONS.map((seconds) => (
-                        <option key={seconds} value={seconds}>
-                          {seconds} seconds
+                      {DURATION_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
                     Frame rate
-                    <select onChange={(event) => setFps(Number(event.target.value))} value={fps}>
-                      {FPS_OPTIONS.map((value) => (
-                        <option key={value} value={value}>
-                          {value} fps
-                        </option>
-                      ))}
+                    <select disabled value={fps || ""}>
+                      <option value={fps || ""}>
+                        {fps ? `${fps} fps · preset controlled` : "Select a preset"}
+                      </option>
                     </select>
                   </label>
                 </div>
@@ -1370,7 +1409,7 @@ export function DashboardStudio({
                     <h2>Preview</h2>
                     <small>
                       {selectedJob
-                        ? `${selectedJob.width} × ${selectedJob.height} · ${selectedJob.duration_seconds}s`
+                        ? `${selectedJob.width} × ${selectedJob.height} · ${formatVideoDuration(completedDurationSeconds(selectedJob))}`
                         : "Your source or latest render appears here"}
                     </small>
                   </div>
@@ -1540,7 +1579,7 @@ function JobGrid({
             <div>
               <h3>{job.title || job.prompt}</h3>
               <p>
-                {ACTION_LABELS[job.action]} · {job.duration_seconds}s · {job.width}×{job.height}
+                {ACTION_LABELS[job.action]} · {formatVideoDuration(completedDurationSeconds(job))} · {job.width}×{job.height}
               </p>
               <span className={statusTone(job.status)}>{job.status.replaceAll("_", " ")}</span>
               <small className="job-timing">{jobTimingLabel(job, clock)}</small>
@@ -1657,8 +1696,11 @@ function VideosPage({
               <div className="video-metadata">
                 <span>{ACTION_LABELS[selected.action]}</span>
                 <span>{selected.width} × {selected.height}</span>
-                <span>{selected.duration_seconds} seconds</span>
-                <span>{selected.fps} fps</span>
+                <span>
+                  {selected.status === "completed" ? "Actual " : "Requested "}
+                  {formatVideoDuration(completedDurationSeconds(selected))}
+                </span>
+                <span>{selected.output_fps ?? selected.fps} fps</span>
                 <span>{selected.credit_cost} credits</span>
                 <span>{jobTimingLabel(selected, clock)}</span>
               </div>

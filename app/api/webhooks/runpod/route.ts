@@ -4,6 +4,7 @@ import {
   extractOutputLocation,
   reconcileGenerationJob,
 } from '@/src/lib/generation-reconciliation';
+import { validateCompletionTiming } from '@/src/lib/generation-timing';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     const { data: job, error: jobError } = await admin
       .from('generation_jobs')
       .select(
-        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at',
+        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at,requested_duration_seconds,frames,fps',
       )
       .eq('id', jobId)
       .single();
@@ -83,9 +84,86 @@ export async function POST(request: Request) {
         return new NextResponse('OK', { status: 200 });
       }
 
+      const timingValidation = validateCompletionTiming({
+        expectedFps: Number(job.fps),
+        expectedFrames: Number(job.frames),
+        expectedRequestedDurationSeconds: Number(
+          job.requested_duration_seconds,
+        ),
+        output: payload.output,
+      });
+
+      if (!timingValidation.ok) {
+        console.warn(
+          `Generation ${jobId} failed webhook timing validation: ${timingValidation.reason}`,
+          timingValidation.metadata,
+        );
+
+        const { error: refundError } = await admin.rpc(
+          'refund_generation_reservation',
+          {
+            p_generation_id: jobId,
+            p_terminal_status: 'failed',
+          },
+        );
+
+        if (refundError) {
+          throw refundError;
+        }
+
+        const timing = timingValidation.metadata;
+        const { error: invalidTimingUpdateError } = await admin
+          .from('generation_jobs')
+          .update({
+            actual_duration_seconds:
+              timing?.actualDurationSeconds ?? null,
+            error_code: timingValidation.reason,
+            error_message:
+              timingValidation.reason === 'actual-duration-mismatch'
+                ? `The generated MP4 duration (${timing?.actualDurationSeconds.toFixed(3)}s) did not match the requested duration (${job.requested_duration_seconds}s).`
+                : 'The render provider returned incomplete or inconsistent video timing metadata.',
+            output_fps: timing?.fps ?? null,
+            output_frames: timing?.frames ?? null,
+            progress_percent: 0,
+            requested_duration_seconds: Number(
+              job.requested_duration_seconds,
+            ),
+            runpod_status: 'COMPLETED_DURATION_INVALID',
+            runpod_execution_ms: payload.executionTime ?? null,
+            runpod_delay_ms: payload.delayTime ?? null,
+            runpod_worker_id: payload.workerId ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+
+        if (invalidTimingUpdateError) {
+          throw invalidTimingUpdateError;
+        }
+
+        await admin.from('notifications').insert({
+          user_id: job.user_id,
+          type: 'generation_failed',
+          title: 'Video duration validation failed',
+          message:
+            'The generated video did not match the requested duration. Reserved credits were returned.',
+          action_url: '/?view=dashboard&section=videos',
+          metadata: {
+            generation_id: jobId,
+            timing_validation: timingValidation.reason,
+          },
+        });
+
+        return new NextResponse('OK', { status: 200 });
+      }
+
+      const timing = timingValidation.metadata;
       const { error: updateError } = await admin
         .from('generation_jobs')
         .update({
+          actual_duration_seconds: timing.actualDurationSeconds,
+          requested_duration_seconds: timing.requestedDurationSeconds,
+          output_fps: timing.fps,
+          output_frames: timing.frames,
           runpod_status: status,
           output_storage_path: outputLocation,
           runpod_execution_ms: payload.executionTime ?? null,

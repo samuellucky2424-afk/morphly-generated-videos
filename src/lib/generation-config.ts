@@ -1,3 +1,14 @@
+import { calculateLtxFrameCount } from './generation-timing';
+
+export {
+  DEFAULT_DURATION_OPTION_ID,
+  DURATION_OPTION_IDS,
+  DURATION_OPTIONS,
+  getDurationOption,
+  getDurationOptionBySeconds,
+  type DurationOptionId,
+} from './generation-timing';
+
 export const GENERATION_MODES = [
   'text_to_video',
   'image_to_video',
@@ -51,9 +62,6 @@ export const RESOLUTION_OPTIONS = [
 
 export type ResolutionKey = (typeof RESOLUTION_OPTIONS)[number]['key'];
 
-export const DURATION_OPTIONS = [3, 5, 8] as const;
-export const FPS_OPTIONS = [16, 24, 30] as const;
-
 const MODE_CREDITS_PER_SECOND: Record<GenerationMode, number> = {
   text_to_video: 10,
   image_to_video: 10,
@@ -61,9 +69,7 @@ const MODE_CREDITS_PER_SECOND: Record<GenerationMode, number> = {
 };
 
 const FPS_MULTIPLIERS: Record<number, number> = {
-  16: 0.85,
-  24: 1,
-  30: 1.2,
+  8: 1,
 };
 
 export function getResolution(key: string) {
@@ -114,6 +120,5 @@ export function calculateGenerationCost({
 }
 
 export function calculateFrameCount(durationSeconds: number, fps: number) {
-  const nominalFrames = durationSeconds * fps;
-  return Math.max(9, Math.round((nominalFrames - 1) / 8) * 8 + 1);
+  return calculateLtxFrameCount(durationSeconds, fps);
 }
