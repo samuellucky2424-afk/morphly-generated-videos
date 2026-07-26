@@ -37,6 +37,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import { normalizeAssetMimeType } from "@/src/lib/assets";
 import { ApiRequestError, requestJson } from "@/src/lib/client-api";
 import {
   calculateGenerationCost,
@@ -46,6 +47,10 @@ import {
   type GenerationMode,
   type ResolutionKey,
 } from "@/src/lib/generation-config";
+import {
+  shouldUseResumableUpload,
+  uploadResumably,
+} from "@/src/lib/resumable-upload";
 import { createClient } from "@/src/lib/supabase/client";
 
 type View = "home" | "dashboard" | "auth";
@@ -328,6 +333,7 @@ export function DashboardStudio({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [checkoutId, setCheckoutId] = useState("");
   const [studioError, setStudioError] = useState("");
   const [notice, setNotice] = useState("");
@@ -480,10 +486,12 @@ export function DashboardStudio({
   }
 
   async function uploadAsset(file: File, kind?: Asset["kind"]) {
+    const contentType = normalizeAssetMimeType(file.name, file.type);
     const resolvedKind =
       kind ??
-      (file.type.startsWith("image/") ? "source_image" : "source_video");
+      (contentType.startsWith("image/") ? "source_image" : "source_video");
     setUploading(true);
+    setUploadProgress(0);
     setStudioError("");
     setNotice("");
 
@@ -497,19 +505,31 @@ export function DashboardStudio({
         body: JSON.stringify({
           fileName: file.name,
           kind: resolvedKind,
-          mimeType: file.type,
+          mimeType: contentType,
           sizeBytes: file.size,
         }),
       });
-      const supabase = createClient();
-      const { error: uploadError } = await supabase.storage
-        .from(initialized.upload.bucket)
-        .uploadToSignedUrl(initialized.upload.path, initialized.upload.token, file, {
-          cacheControl: "3600",
-          contentType: file.type,
-        });
 
-      if (uploadError) throw uploadError;
+      if (shouldUseResumableUpload(file)) {
+        await uploadResumably({
+          bucket: initialized.upload.bucket,
+          contentType,
+          file,
+          onProgress: setUploadProgress,
+          path: initialized.upload.path,
+          token: initialized.upload.token,
+        });
+      } else {
+        const supabase = createClient();
+        const { error: uploadError } = await supabase.storage
+          .from(initialized.upload.bucket)
+          .uploadToSignedUrl(initialized.upload.path, initialized.upload.token, file, {
+            cacheControl: "3600",
+            contentType,
+          });
+        if (uploadError) throw uploadError;
+        setUploadProgress(100);
+      }
 
       const completed = await requestJson<{ asset: Asset }>(
         `/api/assets/${initialized.asset.id}/complete`,
@@ -521,13 +541,14 @@ export function DashboardStudio({
         setProfile(refreshedProfile);
         setNotice("Profile photo updated.");
       } else {
-        setAssets((current) => [
-          completed.asset,
-          ...current.filter((asset) => asset.id !== completed.asset.id),
-        ]);
-        setSourceAssetId(completed.asset.id);
+        const refreshedAssets = await requestJson<Asset[]>("/api/assets");
+        const refreshedAsset =
+          refreshedAssets.find((asset) => asset.id === completed.asset.id) ??
+          completed.asset;
+        setAssets(refreshedAssets);
+        setSourceAssetId(refreshedAsset.id);
         setMode(resolvedKind === "source_image" ? "Image to video" : "Video to video");
-        setNotice(`${completed.asset.original_name || "Asset"} is ready to use.`);
+        setNotice(`${refreshedAsset.original_name || "Asset"} is ready to use.`);
       }
 
       return completed.asset;
@@ -538,6 +559,7 @@ export function DashboardStudio({
       return null;
     } finally {
       setUploading(false);
+      window.setTimeout(() => setUploadProgress(0), 500);
     }
   }
 
@@ -941,15 +963,24 @@ export function DashboardStudio({
                         </>
                       ) : (
                         <>
-                          <Upload />
+                          {uploading ? <RefreshCw className="spin" /> : <Upload />}
                           <b>
-                            Upload a {modeAction === "image_to_video" ? "source image" : "source video"}
+                            {uploading
+                              ? `Uploading ${uploadProgress}%`
+                              : `Upload a ${modeAction === "image_to_video" ? "source image" : "source video"}`}
                           </b>
                           <span>
-                            {modeAction === "image_to_video"
+                            {uploading
+                              ? "Keep this page open while the file is transferred."
+                              : modeAction === "image_to_video"
                               ? "JPG, PNG or WebP · max 15 MB"
                               : "MP4, MOV or WebM · max 200 MB"}
                           </span>
+                          {uploading && (
+                            <span className="upload-progress-track">
+                              <i style={{ width: `${Math.max(3, uploadProgress)}%` }} />
+                            </span>
+                          )}
                         </>
                       )}
                       <input
@@ -1082,13 +1113,7 @@ export function DashboardStudio({
                 </div>
                 <button
                   className="generate-btn"
-                  disabled={
-                    submitting ||
-                    uploading ||
-                    !activePreset ||
-                    !prompt.trim() ||
-                    (modeAction !== "text_to_video" && !sourceAsset)
-                  }
+                  disabled={submitting || uploading}
                   onClick={handleGenerate}
                   type="button"
                 >

@@ -172,6 +172,9 @@
 .prompt-panel .panel-head small,.preview-panel .panel-head small{color:#737d74;font-size:8px}
 .source-control{display:grid;gap:10px;margin-bottom:16px}
 .source-control .dropzone{margin:0;cursor:pointer;overflow:hidden}
+.source-control .dropzone .spin{animation:spin .8s linear infinite}
+.upload-progress-track{display:block;width:min(250px,80%);height:5px;overflow:hidden;border-radius:999px;background:#273027}
+.upload-progress-track i{display:block;height:100%;border-radius:inherit;background:var(--lime);transition:width .2s ease}
 .source-control .dropzone.has-file{height:126px;display:grid;grid-template-columns:135px 1fr;align-items:center;justify-items:start;gap:14px;padding:9px;text-align:left}
 .source-control .dropzone.has-file>img,.source-control .dropzone.has-file>video{width:135px;height:106px;margin:0;border-radius:7px;object-fit:cover}
 .source-control .dropzone.has-file>div{display:flex;min-width:0;flex-direction:column;gap:6px}

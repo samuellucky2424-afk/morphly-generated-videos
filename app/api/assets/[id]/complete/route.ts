@@ -22,17 +22,30 @@ async function readStoredHeader(signedUrl: string) {
   const reader = response.body.getReader();
   const { value } = await reader.read();
   await reader.cancel();
-  const contentRange = response.headers.get('content-range');
-  const rangeSize = contentRange?.match(/\/(\d+)$/)?.[1];
-  const contentLength = response.headers.get('content-length');
-  const sizeBytes = Number(
-    rangeSize ?? (response.status === 200 ? contentLength : Number.NaN),
-  );
+  return value ?? new Uint8Array();
+}
 
-  return {
-    bytes: value ?? new Uint8Array(),
-    sizeBytes: Number.isSafeInteger(sizeBytes) ? sizeBytes : null,
-  };
+async function getStoredFileSize(
+  admin: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  storagePath: string,
+) {
+  const pathParts = storagePath.split('/');
+  const fileName = pathParts.pop();
+  const directory = pathParts.join('/');
+  if (!fileName) return null;
+
+  const { data, error } = await admin.storage.from(bucket).list(directory, {
+    limit: 10,
+    search: fileName,
+  });
+  if (error) {
+    throw error;
+  }
+
+  const storedFile = data?.find((entry) => entry.name === fileName);
+  const sizeBytes = Number(storedFile?.metadata?.size);
+  return Number.isSafeInteger(sizeBytes) ? sizeBytes : null;
 }
 
 export async function POST(_request: Request, context: RouteContext) {
@@ -79,14 +92,17 @@ export async function POST(_request: Request, context: RouteContext) {
       mimeType: asset.mime_type,
       sizeBytes: Number(asset.size_bytes),
     });
-    const storedFile = await readStoredHeader(signed.signedUrl);
+    const [storedHeader, storedSizeBytes] = await Promise.all([
+      readStoredHeader(signed.signedUrl),
+      getStoredFileSize(admin, asset.bucket, asset.storage_path),
+    ]);
 
     if (
       'error' in validated ||
-      storedFile.sizeBytes === null ||
-      storedFile.sizeBytes !== Number(asset.size_bytes) ||
-      storedFile.sizeBytes > validated.sizeLimit ||
-      !matchesAssetSignature(asset.mime_type, storedFile.bytes)
+      storedSizeBytes === null ||
+      storedSizeBytes !== Number(asset.size_bytes) ||
+      storedSizeBytes > validated.sizeLimit ||
+      !matchesAssetSignature(asset.mime_type, storedHeader)
     ) {
       await admin.storage.from(asset.bucket).remove([asset.storage_path]);
       await admin
