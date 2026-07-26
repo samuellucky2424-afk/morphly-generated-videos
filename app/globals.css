@@ -423,16 +423,46 @@
 .mkt-menu{display:none;width:36px;height:36px;place-items:center;border:1px solid #303731;border-radius:8px;background:#0f1411}
 .mkt-menu svg{width:17px}
 .mkt-hero{
-  width:min(var(--mkt-width),calc(100% - 40px));
-  display:grid;
-  grid-template-columns:minmax(0,.87fr) minmax(440px,1.13fr);
-  align-items:center;
-  gap:64px;
+  position:relative;
+  isolation:isolate;
+  width:100%;
   min-height:720px;
+  overflow:hidden;
+  border-bottom:1px solid #252b26;
+  background:#050706;
+}
+.mkt-hero-media{
+  position:absolute;
+  z-index:-2;
+  inset:0;
+  overflow:hidden;
+  background:#050706;
+}
+.mkt-hero-media video{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:center;
+  filter:saturate(.9) contrast(1.04);
+}
+.mkt-hero-media::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(90deg,#050706f5 0%,#050706d9 32%,#05070675 62%,#0507064d 100%),
+    linear-gradient(180deg,#05070659 0%,transparent 30%,#050706a8 100%);
+}
+.mkt-hero-inner{
+  width:min(var(--mkt-width),calc(100% - 40px));
+  min-height:720px;
+  display:flex;
+  align-items:center;
   margin:auto;
   padding:96px 0 80px;
 }
-.mkt-hero-copy{max-width:585px}
+.mkt-hero-copy{position:relative;z-index:1;max-width:650px}
 .mkt-kicker{
   display:block;
   color:var(--lime);
@@ -688,7 +718,13 @@
 .mkt-footer>small{grid-column:1/-1;padding-top:24px;border-top:1px solid #202621;color:#626b63}
 
 @media(max-width:1050px){
-  .mkt-hero{grid-template-columns:1fr;gap:48px;min-height:auto;padding-top:88px}
+  .mkt-hero,.mkt-hero-inner{min-height:660px}
+  .mkt-hero-inner{padding:88px 0 72px}
+  .mkt-hero-media::after{
+    background:
+      linear-gradient(90deg,#050706f2 0%,#050706c9 55%,#05070670 100%),
+      linear-gradient(180deg,#05070659 0%,transparent 28%,#050706b8 100%);
+  }
   .mkt-hero-copy{max-width:760px}
   .mkt-gallery{grid-template-columns:1fr 1fr}
   .mkt-gallery>.mkt-video:first-child{grid-column:1/-1;grid-row:auto}
@@ -723,8 +759,15 @@
   .mkt-nav-links a:last-child{border:0}
   .mkt-sign-in{display:none}
   .mkt-primary.compact{display:none}
-  .mkt-hero,.mkt-section,.mkt-proof-strip,.mkt-final-cta,.marketing-site .mkt-footer{width:calc(100% - 28px)}
-  .mkt-hero{padding:72px 0 56px}
+  .mkt-hero-inner,.mkt-section,.mkt-proof-strip,.mkt-final-cta,.marketing-site .mkt-footer{width:calc(100% - 28px)}
+  .mkt-hero,.mkt-hero-inner{min-height:620px}
+  .mkt-hero-inner{padding:72px 0 56px}
+  .mkt-hero-media video{object-position:62% center}
+  .mkt-hero-media::after{
+    background:
+      linear-gradient(90deg,#050706e8 0%,#050706a8 100%),
+      linear-gradient(180deg,#05070670 0%,#0507068f 54%,#050706e8 100%);
+  }
   .mkt-hero h1{font-size:clamp(2.75rem,13vw,4rem)}
   .mkt-hero-copy>p{font-size:15px}
   .mkt-video-caption{grid-template-columns:1fr;gap:14px}

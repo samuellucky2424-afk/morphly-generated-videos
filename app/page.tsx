@@ -183,6 +183,34 @@ function AssetSlot({
   );
 }
 
+function HeroBackgroundVideo() {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return null;
+  }
+
+  return (
+    <div aria-hidden="true" className="mkt-hero-media">
+      <video
+        autoPlay
+        loop
+        muted
+        onCanPlay={(event) => {
+          event.currentTarget.muted = true;
+          void event.currentTarget.play().catch(() => undefined);
+        }}
+        onError={() => setFailed(true)}
+        playsInline
+        preload="auto"
+        tabIndex={-1}
+      >
+        <source src={HERO_VIDEO.src} type="video/mp4" />
+      </video>
+    </div>
+  );
+}
+
 function ProductVideo({
   compact = false,
   video,
@@ -287,29 +315,31 @@ function Home({
       />
       <main>
         <section className="mkt-hero" id="product">
-          <motion.div
-            className="mkt-hero-copy"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <span className="mkt-kicker">AI video generation · LTX 2.3</span>
-            <h1>Create cinematic video from a prompt, image, or clip.</h1>
-            <p>
-              Morphly brings text-to-video, image-to-video and video transformation
-              into one focused creative studio powered by LTX 2.3.
-            </p>
-            <div className="mkt-actions">
-              <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
-                Create your first video <ArrowRight />
-              </button>
-              <button className="mkt-secondary" onClick={() => onCreate("videos")} type="button">
-                <Play /> View generated videos
-              </button>
-            </div>
-            <small>Start with 50 free credits. No card required.</small>
-          </motion.div>
-          <ProductVideo video={HERO_VIDEO} />
+          <HeroBackgroundVideo />
+          <div className="mkt-hero-inner">
+            <motion.div
+              className="mkt-hero-copy"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+            >
+              <span className="mkt-kicker">AI video generation · LTX 2.3</span>
+              <h1>Create cinematic video from a prompt, image, or clip.</h1>
+              <p>
+                Morphly brings text-to-video, image-to-video and video transformation
+                into one focused creative studio powered by LTX 2.3.
+              </p>
+              <div className="mkt-actions">
+                <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
+                  Create your first video <ArrowRight />
+                </button>
+                <button className="mkt-secondary" onClick={() => onCreate("videos")} type="button">
+                  <Play /> View generated videos
+                </button>
+              </div>
+              <small>Start with 50 free credits. No card required.</small>
+            </motion.div>
+          </div>
         </section>
 
         <section className="mkt-proof-strip" aria-label="Current product workflow">
