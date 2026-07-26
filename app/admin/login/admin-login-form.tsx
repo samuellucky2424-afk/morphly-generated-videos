@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { ArrowRight, KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/client';
 
@@ -104,18 +105,18 @@ export function AdminLoginForm({
 
   return (
     <div className="auth-page admin-login-page">
-      <a className="auth-back" href="/">
+      <Link className="auth-back" href="/">
         <ArrowRight /> Back to Morphly
-      </a>
+      </Link>
 
       <section className="auth-brand" aria-label="Morphly administrator portal">
-        <a className="logo" href="/" aria-label="Morphly home">
+        <Link className="logo" href="/" aria-label="Morphly home">
           <span className="logo-mark">
             <Sparkles size={17} />
           </span>
           <span>Morphly</span>
           <em>LTX 2.3</em>
-        </a>
+        </Link>
         <div className="auth-visual">
           <div className="ring r1" />
           <div className="ring r2" />
@@ -140,13 +141,13 @@ export function AdminLoginForm({
       <main className="auth-form-wrap">
         <div className="auth-form">
           <div className="mobile-logo">
-            <a className="logo" href="/">
+            <Link className="logo" href="/">
               <span className="logo-mark">
                 <Sparkles size={17} />
               </span>
               <span>Morphly</span>
               <em>ADMIN</em>
-            </a>
+            </Link>
           </div>
 
           <span className="auth-tag">SECURE ADMIN PORTAL</span>
@@ -222,7 +223,7 @@ export function AdminLoginForm({
 
           <small className="legal">
             First time here?{' '}
-            <a href="/?auth=signup">Create and verify a Morphly account</a> using the
+            <Link href="/?auth=signup">Create and verify a Morphly account</Link> using the
             administrator email first. Access attempts remain restricted to verified accounts
             with an administrator role.
           </small>

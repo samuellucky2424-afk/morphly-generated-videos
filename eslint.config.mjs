@@ -9,6 +9,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    "Morphly-LTX-2/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

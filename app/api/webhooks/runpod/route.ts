@@ -1,6 +1,50 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/src/lib/supabase/admin';
 import { env } from '@/src/lib/env';
+import { createAdminClient } from '@/src/lib/supabase/admin';
+
+export const dynamic = 'force-dynamic';
+
+type RunPodPayload = {
+  delayTime?: number;
+  error?: string;
+  executionTime?: number;
+  id?: string;
+  output?: unknown;
+  progress?: number;
+  status?: string;
+  workerId?: string;
+};
+
+function extractOutputUrl(value: unknown): string | null {
+  if (typeof value === 'string') {
+    return value.startsWith('https://') || value.startsWith('http://') ? value : null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = extractOutputUrl(item);
+      if (url) return url;
+    }
+    return null;
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    for (const key of ['url', 'video_url', 'video', 'output']) {
+      const url = extractOutputUrl(record[key]);
+      if (url) return url;
+    }
+  }
+
+  return null;
+}
+
+function safeProgress(value: unknown, fallback: number) {
+  const progress = Number(value);
+  return Number.isFinite(progress)
+    ? Math.max(0, Math.min(100, Math.round(progress)))
+    : fallback;
+}
 
 export async function POST(request: Request) {
   try {
@@ -16,77 +60,155 @@ export async function POST(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const payload = await request.json() as {
-      status: string;
-      output?: { url?: string } | string[];
-      executionTime?: number;
-      delayTime?: number;
-      error?: string;
-    };
-    const supabase = createAdminClient();
-    
-    // Log event
-    await supabase.from('generation_events').insert({
+    const payload = (await request.json()) as RunPodPayload;
+    const status = String(payload.status ?? '').toUpperCase();
+    if (!status) {
+      return new NextResponse('Missing job status', { status: 400 });
+    }
+
+    const admin = createAdminClient();
+    const { data: job, error: jobError } = await admin
+      .from('generation_jobs')
+      .select('id,user_id,status,prompt')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return new NextResponse('Generation not found', { status: 404 });
+    }
+
+    await admin.from('generation_events').insert({
       generation_id: jobId,
-      event_type: payload.status,
-      message: 'RunPod webhook received',
-      metadata: payload
+      event_type: status.toLowerCase(),
+      from_status: job.status,
+      message: 'RunPod status update received',
+      metadata: {
+        delay_time: payload.delayTime ?? null,
+        execution_time: payload.executionTime ?? null,
+        progress: payload.progress ?? null,
+        worker_id: payload.workerId ?? null,
+      },
     });
 
-    if (payload.status === 'COMPLETED') {
-      const outputUrl = Array.isArray(payload.output)
-        ? payload.output[0]
-        : payload.output?.url; // Depending on template output format
-
-      // Update Job
-      await supabase
-        .from('generation_jobs')
-        .update({
-          runpod_status: payload.status,
-          output_storage_path: outputUrl, // In a robust app, we download this URL and upload to Supabase Storage
-          runpod_execution_ms: payload.executionTime,
-          runpod_delay_ms: payload.delayTime,
-        })
-        .eq('id', jobId);
-
-      // Finalize Charge (Atomic)
-      await supabase.rpc('finalize_generation_charge', {
-        p_generation_id: jobId
-      });
-
+    if (['completed', 'failed', 'cancelled', 'timed_out'].includes(job.status)) {
       return new NextResponse('OK', { status: 200 });
-    } 
-    
-    if (payload.status === 'FAILED') {
-      // Refund Reservation (Atomic)
-      await supabase.rpc('refund_generation_reservation', {
-        p_generation_id: jobId,
-        p_terminal_status: 'failed'
-      });
-      
-      await supabase
+    }
+
+    if (status === 'COMPLETED') {
+      const outputUrl = extractOutputUrl(payload.output);
+      if (!outputUrl) {
+        return new NextResponse('Completed job did not include an output URL', {
+          status: 422,
+        });
+      }
+
+      const { error: updateError } = await admin
         .from('generation_jobs')
         .update({
-          runpod_status: payload.status,
-          error_message: payload.error || 'RunPod execution failed',
+          runpod_status: status,
+          output_storage_path: outputUrl,
+          runpod_execution_ms: payload.executionTime ?? null,
+          runpod_delay_ms: payload.delayTime ?? null,
+          runpod_worker_id: payload.workerId ?? null,
+          progress_percent: 100,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', jobId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      const { error: finalizeError } = await admin.rpc(
+        'finalize_generation_charge',
+        { p_generation_id: jobId },
+      );
+      if (finalizeError) {
+        throw finalizeError;
+      }
+
+      if (job.status !== 'completed') {
+        await admin.from('notifications').insert({
+          user_id: job.user_id,
+          type: 'generation_completed',
+          title: 'Your video is ready',
+          message: job.prompt.slice(0, 140),
+          action_url: '/?view=dashboard&section=videos',
+          metadata: { generation_id: jobId },
+        });
+      }
 
       return new NextResponse('OK', { status: 200 });
     }
 
-    // IN_PROGRESS etc
-    await supabase
+    if (['FAILED', 'CANCELLED', 'TIMED_OUT'].includes(status)) {
+      const terminalStatus =
+        status === 'CANCELLED'
+          ? 'cancelled'
+          : status === 'TIMED_OUT'
+            ? 'timed_out'
+            : 'failed';
+      const { error: refundError } = await admin.rpc(
+        'refund_generation_reservation',
+        {
+          p_generation_id: jobId,
+          p_terminal_status: terminalStatus,
+        },
+      );
+
+      if (refundError) {
+        throw refundError;
+      }
+
+      await admin
+        .from('generation_jobs')
+        .update({
+          runpod_status: status,
+          error_message:
+            typeof payload.error === 'string'
+              ? payload.error.slice(0, 500)
+              : status === 'TIMED_OUT'
+                ? 'The render exceeded its processing time limit.'
+                : status === 'CANCELLED'
+                  ? 'The render was cancelled.'
+                  : 'The render provider could not complete this video.',
+          progress_percent: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+
+      if (!['failed', 'cancelled', 'timed_out'].includes(job.status)) {
+        await admin.from('notifications').insert({
+          user_id: job.user_id,
+          type: 'generation_failed',
+          title: status === 'CANCELLED' ? 'Render cancelled' : 'Render did not complete',
+          message: 'Reserved credits were returned to your wallet.',
+          action_url: '/?view=dashboard&section=videos',
+          metadata: { generation_id: jobId, provider_status: status },
+        });
+      }
+
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    const processingUpdate: Record<string, unknown> = {
+      runpod_status: status,
+      status: 'processing',
+      progress_percent: safeProgress(payload.progress, 5),
+      updated_at: new Date().toISOString(),
+    };
+    if (status === 'IN_PROGRESS') {
+      processingUpdate.started_at = new Date().toISOString();
+    }
+
+    await admin
       .from('generation_jobs')
-      .update({
-        runpod_status: payload.status,
-      })
+      .update(processingUpdate)
       .eq('id', jobId);
 
     return new NextResponse('OK', { status: 200 });
-
   } catch (error) {
-    console.error('RunPod Webhook Error:', error);
+    console.error('RunPod webhook processing failed:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

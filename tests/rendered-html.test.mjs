@@ -108,10 +108,30 @@ test("admin routes fail closed without a verified administrator session", async 
 
 test("authenticated product APIs return 401 instead of 500 without a session", async () => {
   const worker = await loadWorker("product-auth");
+  const resourceId = "00000000-0000-4000-8000-000000000000";
   const requests = [
     new Request("http://localhost/api/wallet"),
     new Request("http://localhost/api/wallet/transactions"),
     new Request("http://localhost/api/generation/jobs"),
+    new Request("http://localhost/api/generation/jobs", { method: "POST" }),
+    new Request(`http://localhost/api/generation/jobs/${resourceId}`, {
+      method: "DELETE",
+    }),
+    new Request(`http://localhost/api/generation/jobs/${resourceId}/cancel`, {
+      method: "POST",
+    }),
+    new Request("http://localhost/api/assets"),
+    new Request("http://localhost/api/assets", { method: "POST" }),
+    new Request(`http://localhost/api/assets/${resourceId}`, {
+      method: "DELETE",
+    }),
+    new Request(`http://localhost/api/assets/${resourceId}/complete`, {
+      method: "POST",
+    }),
+    new Request("http://localhost/api/profile"),
+    new Request("http://localhost/api/profile", { method: "PATCH" }),
+    new Request("http://localhost/api/notifications"),
+    new Request("http://localhost/api/notifications", { method: "PATCH" }),
     new Request("http://localhost/api/auth/bootstrap", { method: "POST" }),
   ];
 
