@@ -81,6 +81,29 @@ test("admin routes fail closed without a verified administrator session", async 
   );
   assert.notEqual(sessionResponse.status, 200);
   assert.equal((await sessionResponse.json()).authorized, false);
+
+  const protectedAdminRequests = [
+    new Request("http://localhost/api/admin/users?query=user@example.com"),
+    new Request("http://localhost/api/admin/credits", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        userId: "00000000-0000-4000-8000-000000000000",
+        amount: 100,
+        reason: "Account adjustment",
+        requestId: "00000000-0000-4000-8000-000000000001",
+      }),
+    }),
+  ];
+
+  for (const request of protectedAdminRequests) {
+    const response = await worker.fetch(request, runtimeEnv, executionContext);
+    assert.ok(
+      [401, 403].includes(response.status),
+      `${new URL(request.url).pathname} should reject an anonymous request`,
+    );
+    assert.equal(typeof (await response.json()).error, "string");
+  }
 });
 
 test("authenticated product APIs return 401 instead of 500 without a session", async () => {

@@ -95,6 +95,42 @@ export async function GET() {
       0,
     );
 
+    const recentUsers = recentUsersResult.data ?? [];
+    const balancesByUserId = new Map<
+      string,
+      { available_credits: number; reserved_credits: number }
+    >();
+
+    if (recentUsers.length) {
+      const { data: recentWallets, error: recentWalletsError } = await admin
+        .from('wallets')
+        .select('user_id,available_credits,reserved_credits')
+        .in(
+          'user_id',
+          recentUsers.map((user) => user.id),
+        );
+
+      if (recentWalletsError) {
+        console.error('Unable to load recent user balances:', recentWalletsError);
+        return NextResponse.json(
+          { error: 'The admin overview could not be loaded.' },
+          {
+            status: 500,
+            headers: {
+              'Cache-Control': 'no-store',
+            },
+          },
+        );
+      }
+
+      for (const wallet of recentWallets ?? []) {
+        balancesByUserId.set(wallet.user_id, {
+          available_credits: Number(wallet.available_credits ?? 0),
+          reserved_credits: Number(wallet.reserved_credits ?? 0),
+        });
+      }
+    }
+
     return NextResponse.json(
       {
         generatedAt: new Date().toISOString(),
@@ -108,7 +144,11 @@ export async function GET() {
           creditsConsumed,
           revenue,
         },
-        recentUsers: recentUsersResult.data ?? [],
+        recentUsers: recentUsers.map((user) => ({
+          ...user,
+          available_credits: balancesByUserId.get(user.id)?.available_credits ?? null,
+          reserved_credits: balancesByUserId.get(user.id)?.reserved_credits ?? null,
+        })),
         recentJobs: recentJobsResult.data ?? [],
       },
       {

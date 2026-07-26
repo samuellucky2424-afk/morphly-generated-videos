@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   BarChart3,
@@ -11,12 +11,16 @@ import {
   Gauge,
   LayoutDashboard,
   LogOut,
+  Plus,
+  Search,
   Settings,
   ShieldCheck,
   Sparkles,
   Users,
+  X,
   Zap,
 } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/src/lib/supabase/client';
 
 type RevenueTotal = {
@@ -26,10 +30,12 @@ type RevenueTotal = {
 
 type RecentUser = {
   account_status: string;
+  available_credits: number | null;
   created_at: string;
   display_name: string | null;
   email: string;
   id: string;
+  reserved_credits: number | null;
 };
 
 type RecentJob = {
@@ -117,13 +123,23 @@ function formatRevenue(revenue: RevenueTotal[]) {
   }
 }
 
-function UsersTable({ users }: { users: RecentUser[] }) {
+function UsersTable({
+  description = 'Newest verified profiles across Morphly',
+  onAddCredits,
+  title = 'Recent users',
+  users,
+}: {
+  description?: string;
+  onAddCredits: (user: RecentUser) => void;
+  title?: string;
+  users: RecentUser[];
+}) {
   return (
     <div className="users-card">
       <div className="card-title">
         <div>
-          <h2>Recent users</h2>
-          <p>Newest verified profiles across Morphly</p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
       </div>
       <div className="user-table">
@@ -131,8 +147,8 @@ function UsersTable({ users }: { users: RecentUser[] }) {
           <span>User</span>
           <span>Email</span>
           <span>Status</span>
-          <span>Joined</span>
-          <span>Account ID</span>
+          <span>Credits</span>
+          <span>Action</span>
         </div>
         {users.length ? (
           users.map((user) => {
@@ -147,8 +163,29 @@ function UsersTable({ users }: { users: RecentUser[] }) {
                 <span>
                   <em>{user.account_status}</em>
                 </span>
-                <span>{formatDate(user.created_at)}</span>
-                <span title={user.id}>{user.id.slice(0, 8)}…</span>
+                <span className="admin-credit-balance">
+                  {user.available_credits === null ? (
+                    'No wallet'
+                  ) : (
+                    <>
+                      <b>{formatNumber(user.available_credits)}</b>
+                      {Boolean(user.reserved_credits) && (
+                        <small>{formatNumber(user.reserved_credits ?? 0)} reserved</small>
+                      )}
+                    </>
+                  )}
+                </span>
+                <span>
+                  <button
+                    className="admin-add-credit-button"
+                    disabled={user.available_credits === null}
+                    onClick={() => onAddCredits(user)}
+                    type="button"
+                  >
+                    <Plus />
+                    Add credits
+                  </button>
+                </span>
               </div>
             );
           })
@@ -215,6 +252,17 @@ export function AdminDashboard({
   const [data, setData] = useState<AdminOverview | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [userQuery, setUserQuery] = useState('');
+  const [userResults, setUserResults] = useState<RecentUser[] | null>(null);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [userSearchError, setUserSearchError] = useState('');
+  const [creditTarget, setCreditTarget] = useState<RecentUser | null>(null);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditReason, setCreditReason] = useState('');
+  const [creditRequestId, setCreditRequestId] = useState('');
+  const [creditError, setCreditError] = useState('');
+  const [creditSuccess, setCreditSuccess] = useState('');
+  const [grantingCredits, setGrantingCredits] = useState(false);
 
   const displayName = adminName || adminEmail.split('@')[0];
   const adminInitials = useMemo(() => initials(displayName), [displayName]);
@@ -270,6 +318,165 @@ export function AdminDashboard({
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.replace('/admin/login');
+  }
+
+  async function searchUsers(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSearchingUsers(true);
+    setUserSearchError('');
+    setCreditSuccess('');
+
+    try {
+      const response = await fetch(
+        `/api/admin/users?query=${encodeURIComponent(userQuery.trim())}`,
+        {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        },
+      );
+      const result = (await response.json()) as {
+        error?: string;
+        users?: RecentUser[];
+      };
+
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace('/admin/login?reason=forbidden');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to search user accounts.');
+      }
+
+      setUserResults(result.users ?? []);
+    } catch (searchError) {
+      setUserSearchError(
+        searchError instanceof Error
+          ? searchError.message
+          : 'Unable to search user accounts.',
+      );
+    } finally {
+      setSearchingUsers(false);
+    }
+  }
+
+  function clearUserSearch() {
+    setUserQuery('');
+    setUserResults(null);
+    setUserSearchError('');
+  }
+
+  function openCreditGrant(user: RecentUser) {
+    setCreditTarget(user);
+    setCreditAmount('');
+    setCreditReason('');
+    setCreditRequestId(crypto.randomUUID());
+    setCreditError('');
+    setCreditSuccess('');
+  }
+
+  function closeCreditGrant() {
+    if (grantingCredits) {
+      return;
+    }
+
+    setCreditTarget(null);
+    setCreditError('');
+  }
+
+  function replaceUserBalance(
+    userId: string,
+    availableCredits: number,
+    reservedCredits: number,
+  ) {
+    const update = (user: RecentUser) =>
+      user.id === userId
+        ? {
+            ...user,
+            available_credits: availableCredits,
+            reserved_credits: reservedCredits,
+          }
+        : user;
+
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            recentUsers: current.recentUsers.map(update),
+          }
+        : current,
+    );
+    setUserResults((current) => (current ? current.map(update) : current));
+  }
+
+  async function grantCredits(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!creditTarget) {
+      return;
+    }
+
+    const amount = Number(creditAmount);
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000) {
+      setCreditError('Enter a whole credit amount between 1 and 1,000,000.');
+      return;
+    }
+
+    if (creditReason.trim().length < 3) {
+      setCreditError('Enter a reason of at least 3 characters.');
+      return;
+    }
+
+    setGrantingCredits(true);
+    setCreditError('');
+
+    try {
+      const response = await fetch('/api/admin/credits', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: creditTarget.id,
+          amount,
+          reason: creditReason.trim(),
+          requestId: creditRequestId,
+        }),
+      });
+      const result = (await response.json()) as {
+        error?: string;
+        grant?: {
+          availableCredits: number;
+          reservedCredits: number;
+          transactionId: string;
+          userId: string;
+        };
+      };
+
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace('/admin/login?reason=forbidden');
+        return;
+      }
+
+      if (!response.ok || !result.grant) {
+        throw new Error(result.error || 'Credits could not be added.');
+      }
+
+      replaceUserBalance(
+        result.grant.userId,
+        result.grant.availableCredits,
+        result.grant.reservedCredits,
+      );
+      setCreditSuccess(
+        `${amount.toLocaleString()} credits added to ${creditTarget.email}.`,
+      );
+      setCreditTarget(null);
+    } catch (grantError) {
+      setCreditError(
+        grantError instanceof Error ? grantError.message : 'Credits could not be added.',
+      );
+    } finally {
+      setGrantingCredits(false);
+    }
   }
 
   function exportReport() {
@@ -376,7 +583,55 @@ export function AdminDashboard({
         </section>
       </div>
 
-      <UsersTable users={data.recentUsers} />
+      <UsersTable onAddCredits={openCreditGrant} users={data.recentUsers} />
+    </>
+  ) : null;
+
+  const usersContent = data ? (
+    <>
+      <section className="admin-user-tools">
+        <div>
+          <h2>Find a user account</h2>
+          <p>Search by email address or paste an exact user ID.</p>
+        </div>
+        <form onSubmit={searchUsers}>
+          <label className="admin-user-search">
+            <Search />
+            <span className="sr-only">User email or account ID</span>
+            <input
+              autoComplete="off"
+              onChange={(event) => setUserQuery(event.target.value)}
+              placeholder="Email address or user ID"
+              type="search"
+              value={userQuery}
+            />
+          </label>
+          <button className="lime-btn" disabled={searchingUsers} type="submit">
+            {searchingUsers ? 'Searching…' : 'Search'}
+          </button>
+          {userResults !== null && (
+            <button className="admin-clear-search" onClick={clearUserSearch} type="button">
+              Clear
+            </button>
+          )}
+        </form>
+      </section>
+
+      {userSearchError && (
+        <div className="admin-inline-message error" role="alert">
+          {userSearchError}
+        </div>
+      )}
+      <UsersTable
+        description={
+          userResults === null
+            ? 'Newest verified profiles across Morphly'
+            : `${userResults.length} matching account${userResults.length === 1 ? '' : 's'}`
+        }
+        onAddCredits={openCreditGrant}
+        title={userResults === null ? 'Recent users' : 'Search results'}
+        users={userResults ?? data.recentUsers}
+      />
     </>
   ) : null;
 
@@ -411,7 +666,7 @@ export function AdminDashboard({
       return overviewContent;
     }
     if (active === 'Users') {
-      return <UsersTable users={data.recentUsers} />;
+      return usersContent;
     }
     if (active === 'Generations') {
       return <JobsTable jobs={data.recentJobs} />;
@@ -482,13 +737,13 @@ export function AdminDashboard({
   return (
     <div className="app-shell admin-shell">
       <aside className="side">
-        <a className="logo" href="/" aria-label="Morphly home">
+        <Link className="logo" href="/" aria-label="Morphly home">
           <span className="logo-mark">
             <Sparkles size={17} />
           </span>
           <span>Morphly</span>
           <em>ADMIN</em>
-        </a>
+        </Link>
         <div className="side-label">CONTROL CENTER</div>
         {ADMIN_SECTIONS.map(({ icon: Icon, label }) => (
           <button
@@ -561,9 +816,114 @@ export function AdminDashboard({
             </button>
           </div>
 
+          {creditSuccess && (
+            <div className="admin-inline-message success admin-global-notice" role="status">
+              <ShieldCheck />
+              {creditSuccess}
+            </div>
+          )}
           {renderSection()}
         </div>
       </main>
+
+      {creditTarget && (
+        <div className="admin-modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="admin-credit-title"
+            aria-modal="true"
+            className="admin-credit-modal"
+            role="dialog"
+          >
+            <div className="admin-credit-modal-head">
+              <div>
+                <span>WALLET CREDIT</span>
+                <h2 id="admin-credit-title">Add credits to user</h2>
+              </div>
+              <button
+                aria-label="Close credit grant"
+                disabled={grantingCredits}
+                onClick={closeCreditGrant}
+                type="button"
+              >
+                <X />
+              </button>
+            </div>
+
+            <div className="admin-credit-user">
+              <i>{initials(creditTarget.display_name || creditTarget.email)}</i>
+              <div>
+                <b>{creditTarget.display_name || creditTarget.email.split('@')[0]}</b>
+                <span>{creditTarget.email}</span>
+              </div>
+              <strong>
+                {formatNumber(creditTarget.available_credits ?? 0)} current credits
+              </strong>
+            </div>
+
+            <form onSubmit={grantCredits}>
+              <label>
+                Credit amount
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  max="1000000"
+                  min="1"
+                  onChange={(event) => {
+                    setCreditAmount(event.target.value);
+                    setCreditRequestId(crypto.randomUUID());
+                  }}
+                  placeholder="e.g. 500"
+                  required
+                  step="1"
+                  type="number"
+                  value={creditAmount}
+                />
+              </label>
+              <label>
+                Reason
+                <textarea
+                  maxLength={250}
+                  minLength={3}
+                  onChange={(event) => {
+                    setCreditReason(event.target.value);
+                    setCreditRequestId(crypto.randomUUID());
+                  }}
+                  placeholder="Why are these credits being added?"
+                  required
+                  value={creditReason}
+                />
+                <small>{creditReason.length}/250</small>
+              </label>
+
+              {creditError && (
+                <div className="admin-inline-message error" role="alert">
+                  {creditError}
+                </div>
+              )}
+
+              <div className="admin-credit-confirmation">
+                <ShieldCheck />
+                <span>
+                  This action updates the wallet and creates permanent ledger and audit
+                  records.
+                </span>
+              </div>
+              <div className="admin-credit-actions">
+                <button
+                  disabled={grantingCredits}
+                  onClick={closeCreditGrant}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button className="lime-btn" disabled={grantingCredits} type="submit">
+                  {grantingCredits ? 'Adding credits…' : 'Confirm credit grant'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
