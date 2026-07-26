@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 
@@ -13,10 +13,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument",
+  subsets: ["latin"],
+});
+
 const baseMetadata: Metadata = {
-  title: "Morphly — AI video, directed by you",
+  title: "Morphly — AI Video Generation Powered by LTX 2.3",
   description:
-    "Create cinematic AI video from text, images, or footage with Morphly and LTX 2.3.",
+    "Create cinematic videos from text, images and existing footage with Morphly’s LTX 2.3-powered creative studio.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -37,21 +42,25 @@ export async function generateMetadata(): Promise<Metadata> {
         ? "http"
         : "https";
   const origin = new URL(`${protocol}://${host}`).origin;
-  const imageUrl = `${origin}/og.png`;
+  const imageUrl = `${origin}/og-v2.png`;
 
   return {
     ...baseMetadata,
     metadataBase: new URL(origin),
+    alternates: {
+      canonical: origin,
+    },
     openGraph: {
-      title: "Morphly — Your idea. Now in motion.",
+      title: baseMetadata.title as string,
       description: baseMetadata.description ?? undefined,
+      siteName: "Morphly",
       type: "website",
       url: origin,
-      images: [{ url: imageUrl, width: 1731, height: 909, alt: "Morphly" }],
+      images: [{ url: imageUrl, alt: "Morphly AI video generation powered by LTX 2.3" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Morphly — Your idea. Now in motion.",
+      title: baseMetadata.title as string,
       description: baseMetadata.description ?? undefined,
       images: [imageUrl],
     },
@@ -66,7 +75,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSans.variable} antialiased`}
       >
         {children}
       </body>

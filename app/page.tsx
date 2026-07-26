@@ -1,168 +1,552 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import gsap from "gsap";
 import {
-  ArrowRight, Clapperboard, Download, Film, Image as ImageIcon, Menu,
-  MessageSquareText, Play, Sparkles, WandSparkles, X
+  ArrowRight,
+  Check,
+  Film,
+  Image as ImageIcon,
+  Menu,
+  MessageSquareText,
+  Play,
+  Settings2,
+  Sparkles,
+  Video,
+  X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { DashboardStudio as LiveDashboard } from "./dashboard-studio";
 import { LiveAuth } from "./live-auth";
 import { createClient } from "@/src/lib/supabase/client";
 
 type View = "home" | "dashboard" | "auth";
+type DashboardSection = "create" | "videos" | "assets" | "billing";
 
-function Logo() {
-  return <button onClick={() => location.hash = ""} className="logo" aria-label="Morphly home">
-    <span className="logo-mark"><Sparkles size={17}/></span><span>Morphly</span><em>LTX 2.3</em>
-  </button>;
+type VideoSpec = {
+  duration: string;
+  mode: string;
+  poster: string;
+  prompt: string;
+  resolution: string;
+  src: string;
+  title: string;
+};
+
+const HERO_VIDEO: VideoSpec = {
+  duration: "8 seconds",
+  mode: "Text to video",
+  poster: "/media/morphly-hero-poster.webp",
+  prompt:
+    "A graphite performance coupe moves through a rain-soaked city at blue hour, controlled dolly shot, natural reflections.",
+  resolution: "1024 × 576",
+  src: "/media/morphly-hero.mp4",
+  title: "Blue-hour motion study",
+};
+
+const GALLERY_VIDEOS: VideoSpec[] = [
+  HERO_VIDEO,
+  {
+    duration: "5 seconds",
+    mode: "Image to video",
+    poster: "/media/morphly-image-motion-poster.webp",
+    prompt: "Subtle portrait motion with a slow camera push and preserved facial detail.",
+    resolution: "576 × 1024",
+    src: "/media/morphly-image-motion.mp4",
+    title: "Portrait motion test",
+  },
+  {
+    duration: "8 seconds",
+    mode: "Video to video",
+    poster: "/media/morphly-video-transform-poster.webp",
+    prompt: "Restyle the source footage with restrained cinematic color and stable movement.",
+    resolution: "768 × 432",
+    src: "/media/morphly-video-transform.mp4",
+    title: "Footage transformation",
+  },
+  {
+    duration: "3 seconds",
+    mode: "Text to video",
+    poster: "/media/morphly-product-study-poster.webp",
+    prompt: "Minimal product turntable, soft directional light, clean dark studio.",
+    resolution: "512 × 512",
+    src: "/media/morphly-product-study.mp4",
+    title: "Product study",
+  },
+];
+
+const MODE_ROWS = [
+  {
+    action: "Start with a prompt",
+    description:
+      "Describe the subject, motion, camera, lighting, and atmosphere. Morphly turns the direction into a new video.",
+    icon: MessageSquareText,
+    input: "Text direction",
+    mode: "Text to video",
+    output: "A generated video",
+  },
+  {
+    action: "Animate an image",
+    description:
+      "Upload a source image, select it from your asset library, and direct the movement without changing modes.",
+    icon: ImageIcon,
+    input: "JPG, PNG, or WebP",
+    mode: "Image to video",
+    output: "A motion sequence",
+  },
+  {
+    action: "Transform a clip",
+    description:
+      "Upload existing footage and provide a new visual direction while preserving the source movement.",
+    icon: Video,
+    input: "MP4, MOV, or WebM",
+    mode: "Video to video",
+    output: "A transformed video",
+  },
+];
+
+function Brand() {
+  return (
+    <a aria-label="Morphly home" className="mkt-brand" href="#top">
+      <span>
+        <Sparkles />
+      </span>
+      <b>Morphly</b>
+      <em>LTX 2.3</em>
+    </a>
+  );
 }
 
-function Nav({ setView }: { setView: (v: View) => void }) {
+function MarketingHeader({
+  onCreate,
+  onSignIn,
+}: {
+  onCreate: () => void;
+  onSignIn: () => void;
+}) {
   const [open, setOpen] = useState(false);
-  const go = (id: string) => { setView("home"); setOpen(false); setTimeout(() => document.getElementById(id)?.scrollIntoView({behavior:"smooth"}), 50); };
-  return <header className="nav-wrap">
-    <nav className="nav">
-      <Logo/>
-      <div className={`nav-links ${open ? "open" : ""}`}>
-        {["Home","About","Services","Gallery","Projects","Blog"].map(x => <button key={x} onClick={() => go(x.toLowerCase())}>{x}</button>)}
-        <button onClick={() => go("contact")}>Contact</button>
-      </div>
-      <div className="nav-actions">
-        <button className="text-btn desktop" onClick={() => setView("auth")}>Sign in</button>
-        <button className="lime-btn small" onClick={() => setView("dashboard")}>Start creating <ArrowRight size={15}/></button>
-        <button className="menu-btn" onClick={() => setOpen(!open)} aria-label="Toggle navigation">{open ? <X/> : <Menu/>}</button>
-      </div>
-    </nav>
-  </header>;
+
+  function close() {
+    setOpen(false);
+  }
+
+  return (
+    <header className="mkt-header">
+      <nav aria-label="Primary navigation" className="mkt-nav">
+        <Brand />
+        <div className={`mkt-nav-links ${open ? "open" : ""}`}>
+          <a href="#product" onClick={close}>Product</a>
+          <a href="#gallery" onClick={close}>Gallery</a>
+          <a href="#pricing" onClick={close}>Pricing</a>
+          <a href="#how-it-works" onClick={close}>How it works</a>
+        </div>
+        <div className="mkt-nav-actions">
+          <button className="mkt-sign-in" onClick={onSignIn} type="button">
+            Sign in
+          </button>
+          <button className="mkt-primary compact" onClick={onCreate} type="button">
+            Create video <ArrowRight />
+          </button>
+          <button
+            aria-expanded={open}
+            aria-label={open ? "Close navigation" : "Open navigation"}
+            className="mkt-menu"
+            onClick={() => setOpen((current) => !current)}
+            type="button"
+          >
+            {open ? <X /> : <Menu />}
+          </button>
+        </div>
+      </nav>
+    </header>
+  );
 }
 
-function Hero({ setView }: { setView: (v: View) => void }) {
-  const hero = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(".hero-copy > *", { y: 32, opacity: 0, duration: .9, stagger: .11, ease: "power3.out" });
-      gsap.to(".orb", { y: -16, x: 10, duration: 3.2, repeat: -1, yoyo: true, ease: "sine.inOut" });
-    }, hero);
-    return () => ctx.revert();
-  }, []);
-  return <section className="hero" id="home" ref={hero}>
-    <div className="orb orb-one"/><div className="orb orb-two"/><div className="hero-grid"/>
-    <div className="hero-copy">
-      <div className="eyebrow"><span/> Built on LTX 2.3 · Faster. Sharper. Cinematic.</div>
-      <h1>Your idea.<br/><span>Now in motion.</span></h1>
-      <p>Turn a sentence, image, or rough clip into production-ready AI video—without a studio, timeline, or learning curve.</p>
-      <div className="hero-actions">
-        <button className="lime-btn" onClick={() => setView("dashboard")}><WandSparkles size={18}/> Generate your first video</button>
-        <button className="ghost-btn" onClick={() => document.getElementById("showreel")?.scrollIntoView({behavior:"smooth"})}><Play size={16} fill="currentColor"/> Watch showreel</button>
-      </div>
-      <div className="proof"><div className="avatars"><i>AM</i><i>LK</i><i>JR</i><i>+2k</i></div><span><b>4.9/5</b> from creative teams<br/>No card required · 50 free credits</span></div>
+function AssetSlot({
+  children,
+  filename,
+}: {
+  children?: ReactNode;
+  filename: string;
+}) {
+  return (
+    <div className="mkt-asset-slot">
+      {children ?? <Film />}
+      <b>Product media slot</b>
+      <span>Add a real Morphly output at</span>
+      <code>{filename}</code>
     </div>
-    <div className="hero-stage" aria-label="AI video creation preview">
-      <div className="stage-top"><span><i/> LIVE COMPOSITION</span><span>16:9 · 1080P</span></div>
-      <div className="video-scene">
-        <div className="scene-sun"/><div className="scene-road"/><div className="scene-car"><div/><i/><i/></div>
-        <div className="prompt-float"><Sparkles size={14}/><span>“A cinematic electric coupe racing through a bioluminescent city at dusk”</span></div>
-        <button className="play-big"><Play fill="currentColor"/></button>
+  );
+}
+
+function ProductVideo({
+  compact = false,
+  video,
+}: {
+  compact?: boolean;
+  video: VideoSpec;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <article className={`mkt-video ${compact ? "compact" : ""}`}>
+      <div className="mkt-video-frame">
+        {failed ? (
+          <AssetSlot filename={`public${video.src}`} />
+        ) : (
+          <video
+            aria-label={`${video.title}, ${video.mode}`}
+            controls
+            muted
+            onError={() => setFailed(true)}
+            playsInline
+            poster={video.poster}
+            preload={compact ? "none" : "metadata"}
+          >
+            <source src={video.src} type="video/mp4" />
+            Your browser does not support embedded video.
+          </video>
+        )}
       </div>
-      <div className="timeline">
-        <div className="timeline-head"><span>SCENE 01</span><span>00:06 / 00:08</span></div>
-        <div className="track"><span/><b style={{left:"72%"}}/></div>
-        <div className="clips"><i/><i/><i/><i/><i/></div>
+      <div className="mkt-video-caption">
+        <div>
+          <h3>{video.title}</h3>
+          <p>{video.prompt}</p>
+        </div>
+        <dl>
+          <div><dt>Mode</dt><dd>{video.mode}</dd></div>
+          <div><dt>Length</dt><dd>{video.duration}</dd></div>
+          <div><dt>Output</dt><dd>{video.resolution}</dd></div>
+        </dl>
       </div>
+    </article>
+  );
+}
+
+function DashboardEvidence() {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="mkt-dashboard-evidence">
+      {failed ? (
+        <AssetSlot filename="public/media/morphly-dashboard.webp">
+          <Settings2 />
+        </AssetSlot>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt="Morphly creator dashboard showing generation modes and render settings"
+          onError={() => setFailed(true)}
+          src="/media/morphly-dashboard.webp"
+        />
+      )}
     </div>
-  </section>;
+  );
 }
 
-function Home({ setView }: { setView: (v: View) => void }) {
-  return <><Nav setView={setView}/><main>
-    <Hero setView={setView}/>
-    <section className="ticker" aria-label="Capabilities"><div>TEXT TO VIDEO <Sparkles/> IMAGE TO VIDEO <Sparkles/> VIDEO RESTYLE <Sparkles/> PRODUCT ADS <Sparkles/> CINEMATIC STORIES <Sparkles/> TEXT TO VIDEO</div></section>
-    <section className="section story" id="about">
-      <div className="section-kicker">The creative engine</div><h2>From thought to film<br/><span>in three moves.</span></h2>
-      <div className="steps">
-        {[["01","Describe it","Write what you see in your head. Set the mood, camera, pace and style."],["02","Direct it","Add a reference image or clip. Fine-tune movement with cinematic controls."],["03","Ship it","Generate, upscale and export. Ready for ads, campaigns, socials and stories."]].map((s,i)=><motion.article key={s[0]} initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.12}}>
-          <span>{s[0]}</span><div className="step-icon">{i===0?<MessageSquareText/>:i===1?<Clapperboard/>:<Download/>}</div><h3>{s[1]}</h3><p>{s[2]}</p>
-        </motion.article>)}
+function MarketingFooter({
+  onCreate,
+}: {
+  onCreate: (section?: DashboardSection) => void;
+}) {
+  return (
+    <footer className="mkt-footer">
+      <div>
+        <Brand />
+        <p>A focused LTX 2.3-powered studio for creating video from text and media.</p>
       </div>
-    </section>
-    <section className="section studio-section" id="services">
-      <div className="split-title"><div><div className="section-kicker">One studio. Every format.</div><h2>Build exactly<br/>what you imagined.</h2></div><p>Advanced generation modes with simple controls—designed for marketers, filmmakers, agencies and ambitious brands.</p></div>
-      <div className="services">
-        {[["Text to video","Write a scene. Morphly handles composition, movement and light.","01",<MessageSquareText key="a"/>],["Image to video","Give still images natural motion without losing character or detail.","02",<ImageIcon key="b"/>],["Video to video","Transform footage into a new style while preserving its original movement.","03",<Film key="c"/>]].map((x,i)=><motion.article key={String(x[0])} whileHover={{y:-8}} className={i===1?"featured":""}>
-          <div className={`service-art art-${i}`}>{x[3]}<div className="scan"/><span>{x[2]}</span></div><h3>{x[0]}</h3><p>{x[1]}</p><button onClick={()=>setView("dashboard")}>Open studio <ArrowRight size={15}/></button>
-        </motion.article>)}
-      </div>
-    </section>
-    <section className="showcase" id="showreel"><div className="showcase-copy"><div className="section-kicker">LTX 2.3 quality</div><h2>Motion that feels<br/><em>directed.</em></h2><p>Consistent characters, precise prompts, realistic physics and camera movement engineered for storytelling.</p><div className="metrics"><div><b>3×</b><span>faster rendering</span></div><div><b>1080p</b><span>native output</span></div><div><b>24 fps</b><span>fluid motion</span></div></div></div><div className="show-frame"><div className="portrait-silhouette"/><span>Shot on Morphly</span><button><Play fill="currentColor"/></button></div></section>
-    <section className="section" id="gallery"><div className="section-kicker">Made with Morphly</div><div className="split-title"><h2>Small prompt.<br/>Big screen energy.</h2><button className="ghost-btn" onClick={()=>setView("dashboard")}>Explore gallery <ArrowRight/></button></div>
-      <div className="gallery-grid">{["Aether shoes / Product film","Midnight Tokyo / Concept","Solis skin / Campaign","Desert signal / Short film","Motion studies / Fashion"].map((x,i)=><article className={`gallery-card g${i}`} key={x}><div className="fake-scene"><span/><button aria-label={`Play ${x}`}><Play fill="currentColor"/></button></div><p>{x}</p></article>)}</div>
-    </section>
-    <section className="section projects" id="projects"><div className="section-kicker">Project showcase</div><h2>Made to move<br/>business forward.</h2><div className="project-row"><div><b>+44%</b><span>campaign engagement</span></div><div><b>12 hrs</b><span>from brief to launch</span></div><div><b>−68%</b><span>production cost</span></div><p>“Morphly let our three-person team launch a global-quality campaign before lunch.”<br/><strong>— Amara Obi, Creative Director</strong></p></div></section>
-    <section className="section journal" id="blog"><div className="split-title"><div><div className="section-kicker">The motion journal</div><h2>Ideas worth<br/>putting in motion.</h2></div><button className="ghost-btn">View all stories <ArrowRight/></button></div><div className="articles">{["How AI video changes the creative brief","Seven prompts for cinematic product films","LTX 2.3: A practical creative guide"].map((x,i)=><article key={x}><div className={`article-img ai${i}`}><span>0{i+1}</span></div><small>{i===0?"Creative strategy":i===1?"Prompt craft":"Product"} · 6 min</small><h3>{x}</h3><a>Read story <ArrowRight size={14}/></a></article>)}</div></section>
-    <section className="cta" id="contact"><div><div className="section-kicker">Your next frame starts here</div><h2>Ready when<br/>your idea is.</h2><p>Start with 50 free credits. No card. No complicated timeline.</p></div><div><button className="lime-btn" onClick={()=>setView("auth")}>Create free account <ArrowRight/></button><button className="ghost-btn">Request a quote</button></div></section>
-  </main><Footer/></>;
+      <nav aria-label="Footer navigation">
+        <a href="#product">Product</a>
+        <a href="#gallery">Gallery</a>
+        <button onClick={() => onCreate("billing")} type="button">Pricing</button>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="mailto:samuellucky2424@gmail.com">Contact</a>
+      </nav>
+      <small>© 2026 Morphly. AI video, directed by you.</small>
+    </footer>
+  );
 }
 
-function Footer() { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><a href="/admin/login">Admin</a><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
+function Home({
+  onCreate,
+  onSignIn,
+}: {
+  onCreate: (section?: DashboardSection) => void;
+  onSignIn: () => void;
+}) {
+  return (
+    <div className="marketing-site" id="top">
+      <MarketingHeader
+        onCreate={() => onCreate("create")}
+        onSignIn={onSignIn}
+      />
+      <main>
+        <section className="mkt-hero" id="product">
+          <motion.div
+            className="mkt-hero-copy"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+          >
+            <span className="mkt-kicker">AI video generation · LTX 2.3</span>
+            <h1>Create cinematic video from a prompt, image, or clip.</h1>
+            <p>
+              Morphly brings text-to-video, image-to-video and video transformation
+              into one focused creative studio powered by LTX 2.3.
+            </p>
+            <div className="mkt-actions">
+              <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
+                Create your first video <ArrowRight />
+              </button>
+              <button className="mkt-secondary" onClick={() => onCreate("videos")} type="button">
+                <Play /> View generated videos
+              </button>
+            </div>
+            <small>Start with 50 free credits. No card required.</small>
+          </motion.div>
+          <ProductVideo video={HERO_VIDEO} />
+        </section>
+
+        <section className="mkt-proof-strip" aria-label="Current product workflow">
+          <span>Prompt or media input</span>
+          <ArrowRight />
+          <span>Format and motion controls</span>
+          <ArrowRight />
+          <span>Generated video output</span>
+        </section>
+
+        <section className="mkt-section mkt-gallery-section" id="gallery">
+          <div className="mkt-section-heading">
+            <span className="mkt-kicker">Generated output</span>
+            <h2>Judge the product by the frames it produces.</h2>
+            <p>
+              This gallery is wired for real Morphly-generated files. Until approved
+              showcase media is supplied, every missing asset is labelled with its
+              required filename.
+            </p>
+          </div>
+          <div className="mkt-gallery">
+            {GALLERY_VIDEOS.map((video, index) => (
+              <ProductVideo compact={index !== 0} key={video.src} video={video} />
+            ))}
+          </div>
+        </section>
+
+        <section className="mkt-section mkt-modes-section">
+          <div className="mkt-section-heading narrow">
+            <span className="mkt-kicker">Three creation modes</span>
+            <h2>Use the source material you already have.</h2>
+          </div>
+          <div className="mkt-mode-list">
+            {MODE_ROWS.map(({ action, description, icon: Icon, input, mode, output }) => (
+              <article key={mode}>
+                <div className="mkt-mode-number"><Icon /></div>
+                <div>
+                  <span>{mode}</span>
+                  <h3>{action}</h3>
+                  <p>{description}</p>
+                </div>
+                <dl>
+                  <div><dt>You provide</dt><dd>{input}</dd></div>
+                  <div><dt>Morphly produces</dt><dd>{output}</dd></div>
+                </dl>
+                <button onClick={() => onCreate("create")} type="button">
+                  Open studio <ArrowRight />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mkt-section mkt-workflow" id="how-it-works">
+          <div className="mkt-workflow-copy">
+            <span className="mkt-kicker">How Morphly works</span>
+            <h2>One clear path from direction to output.</h2>
+            <ol>
+              <li>
+                <span>01</span>
+                <div><h3>Add your prompt or media</h3><p>Write the scene or upload an image or video source.</p></div>
+              </li>
+              <li>
+                <span>02</span>
+                <div><h3>Choose format and motion settings</h3><p>Select preset, resolution, duration, frame rate, and optional advanced controls.</p></div>
+              </li>
+              <li>
+                <span>03</span>
+                <div><h3>Generate, review and export</h3><p>Track progress, review the completed output, and download the generated file.</p></div>
+              </li>
+            </ol>
+          </div>
+          <DashboardEvidence />
+        </section>
+
+        <section className="mkt-section mkt-capabilities">
+          <div className="mkt-section-heading narrow">
+            <span className="mkt-kicker">Available now</span>
+            <h2>Controls that match the operating studio.</h2>
+          </div>
+          <div className="mkt-capability-grid">
+            {[
+              ["Modes", "Text to video, image to video, and video to video"],
+              ["Aspect ratios", "1:1, 16:9, and 9:16"],
+              ["Output sizes", "512 × 512 through 1024 × 576 or 576 × 1024"],
+              ["Durations", "3, 5, or 8 seconds"],
+              ["Frame rates", "16, 24, or 30 fps"],
+              ["Credits", "Calculated before generation from the selected configuration"],
+              ["Source formats", "JPG, PNG, WebP, MP4, MOV, and WebM"],
+              ["Output", "Review in the studio and export the completed video"],
+            ].map(([label, value]) => (
+              <article key={label}>
+                <Check />
+                <span>{label}</span>
+                <p>{value}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mkt-section mkt-pricing" id="pricing">
+          <div>
+            <span className="mkt-kicker">Usage-based credits</span>
+            <h2>See the cost before you generate.</h2>
+          </div>
+          <div>
+            <p>
+              Morphly calculates credits from the mode, duration, frame rate,
+              resolution, and preset you select. Your available and reserved balances
+              remain visible in the studio.
+            </p>
+            <button className="mkt-secondary" onClick={() => onCreate("billing")} type="button">
+              View credit options <ArrowRight />
+            </button>
+          </div>
+        </section>
+
+        <section className="mkt-final-cta">
+          <div>
+            <span className="mkt-kicker">Start creating</span>
+            <h2>Direct the next frame.</h2>
+            <p>Open Morphly Studio and turn a prompt, image, or clip into video.</p>
+          </div>
+          <div className="mkt-actions">
+            <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
+              Create video <ArrowRight />
+            </button>
+            <button className="mkt-secondary" onClick={onSignIn} type="button">
+              Sign in
+            </button>
+          </div>
+        </section>
+      </main>
+      <MarketingFooter onCreate={onCreate} />
+    </div>
+  );
+}
 
 export default function HomePage() {
- const [view,setCurrentView]=useState<View>("home");
- const [sessionReady,setSessionReady]=useState(false);
+  const [view, setCurrentView] = useState<View>("home");
+  const [sessionReady, setSessionReady] = useState(false);
 
- const setView=useCallback((nextView: View)=>{
-   const url=new URL(window.location.href);
-   if(nextView==="dashboard"){
-     url.searchParams.set("view","dashboard");
-     url.searchParams.delete("auth");
-     url.searchParams.delete("reset");
-   }else if(nextView==="auth"){
-     url.searchParams.set("view","auth");
-     url.searchParams.delete("section");
-   }else{
-     url.searchParams.delete("view");
-     url.searchParams.delete("section");
-     url.searchParams.delete("auth");
-     url.searchParams.delete("reset");
-   }
-   window.history.replaceState(null,"",url);
-   setCurrentView(nextView);
- },[]);
+  const setView = useCallback((nextView: View) => {
+    const url = new URL(window.location.href);
+    if (nextView === "dashboard") {
+      url.searchParams.set("view", "dashboard");
+      url.searchParams.delete("auth");
+      url.searchParams.delete("reset");
+    } else if (nextView === "auth") {
+      url.searchParams.set("view", "auth");
+      url.searchParams.delete("section");
+    } else {
+      url.searchParams.delete("view");
+      url.searchParams.delete("section");
+      url.searchParams.delete("auth");
+      url.searchParams.delete("reset");
+    }
+    window.history.replaceState(null, "", url);
+    setCurrentView(nextView);
+  }, []);
 
- useEffect(()=>{
-   let active=true;
-   const params=new URLSearchParams(window.location.search);
-   const resetRequested=params.get("reset")==="1";
-   const requestedView: View =
-     params.get("auth")==="signup"||params.get("view")==="auth"
-       ? "auth"
-       : params.get("view")==="dashboard"
-         ? "dashboard"
-         : "home";
-   const supabase=createClient();
+  const openDashboard = useCallback(
+    (section: DashboardSection = "create") => {
+      setView("dashboard");
+      const url = new URL(window.location.href);
+      url.searchParams.set("section", section);
+      window.history.replaceState(null, "", url);
+    },
+    [setView],
+  );
 
-   void supabase.auth.getSession().then(({data})=>{
-     if(!active)return;
-     const nextView =
-       resetRequested
-         ? "auth"
-         : data.session && requestedView==="auth"
-           ? "dashboard"
-           : !data.session && requestedView==="dashboard"
-             ? "auth"
-             : requestedView;
-     setView(nextView);
-     setSessionReady(true);
-   }).catch(()=>{
-     if(!active)return;
-     setView(requestedView==="dashboard"?"auth":requestedView);
-     setSessionReady(true);
-   });
+  useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams(window.location.search);
+    const resetRequested = params.get("reset") === "1";
+    const requestedView: View =
+      params.get("auth") === "signup" || params.get("view") === "auth"
+        ? "auth"
+        : params.get("view") === "dashboard"
+          ? "dashboard"
+          : "home";
+    const supabase = createClient();
 
-   return ()=>{active=false};
- },[setView]);
- useEffect(()=>{scrollTo(0,0)},[view]);
- if(!sessionReady)return <div className="app-session-loading" aria-label="Loading Morphly"/>;
- return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        const nextView =
+          resetRequested
+            ? "auth"
+            : data.session && requestedView === "auth"
+              ? "dashboard"
+              : !data.session && requestedView === "dashboard"
+                ? "auth"
+                : requestedView;
+        setView(nextView);
+        setSessionReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setView(requestedView === "dashboard" ? "auth" : requestedView);
+        setSessionReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [setView]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
+  if (!sessionReady) {
+    return <div aria-label="Loading Morphly" className="app-session-loading" />;
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        key={view}
+        transition={{ duration: 0.18 }}
+      >
+        {view === "home" ? (
+          <Home
+            onCreate={openDashboard}
+            onSignIn={() => setView("auth")}
+          />
+        ) : view === "dashboard" ? (
+          <LiveDashboard setView={setView} />
+        ) : (
+          <LiveAuth setView={setView} />
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
