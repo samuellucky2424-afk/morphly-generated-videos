@@ -4,25 +4,51 @@ import { AuthenticationRequiredError, requireApiUser } from '@/src/lib/auth';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-async function readStoredHeader(signedUrl: string) {
-  const response = await fetch(signedUrl, {
-    headers: { Range: 'bytes=0-31' },
-    cache: 'no-store',
-  });
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
-  if (!response.ok || !response.body) {
-    throw new Error('Stored file could not be verified');
+async function readStoredHeader(signedUrl: string) {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+
+    try {
+      const response = await fetch(signedUrl, {
+        headers: { Range: 'bytes=0-31' },
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Stored file could not be verified');
+      }
+
+      const reader = response.body.getReader();
+      const { value } = await reader.read();
+      controller.abort();
+      return value ?? new Uint8Array();
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await wait(300 * (attempt + 1));
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  const reader = response.body.getReader();
-  const { value } = await reader.read();
-  await reader.cancel();
-  return value ?? new Uint8Array();
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Stored file could not be verified');
 }
 
 async function getStoredFileSize(
@@ -35,17 +61,25 @@ async function getStoredFileSize(
   const directory = pathParts.join('/');
   if (!fileName) return null;
 
-  const { data, error } = await admin.storage.from(bucket).list(directory, {
-    limit: 10,
-    search: fileName,
-  });
-  if (error) {
-    throw error;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data, error } = await admin.storage.from(bucket).list(directory, {
+      limit: 10,
+      search: fileName,
+    });
+    if (error) {
+      if (attempt === 4) throw error;
+    } else {
+      const storedFile = data?.find((entry) => entry.name === fileName);
+      const sizeBytes = Number(storedFile?.metadata?.size);
+      if (Number.isSafeInteger(sizeBytes)) {
+        return sizeBytes;
+      }
+    }
+
+    await wait(250 * (attempt + 1));
   }
 
-  const storedFile = data?.find((entry) => entry.name === fileName);
-  const sizeBytes = Number(storedFile?.metadata?.size);
-  return Number.isSafeInteger(sizeBytes) ? sizeBytes : null;
+  return null;
 }
 
 export async function POST(_request: Request, context: RouteContext) {

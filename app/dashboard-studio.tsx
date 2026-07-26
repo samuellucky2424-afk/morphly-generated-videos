@@ -124,6 +124,15 @@ type Asset = {
   url: string | null;
 };
 
+type UploadState = {
+  active: boolean;
+  completed: number;
+  currentName: string;
+  progress: number;
+  stage: "uploading" | "verifying";
+  total: number;
+};
+
 type CreditPackage = {
   base_credits: number;
   bonus_credits: number;
@@ -185,6 +194,21 @@ const SECTION_QUERY: Record<Section, string> = {
 };
 
 const ACTIVE_STATUSES = new Set(["created", "reserving", "queued", "processing"]);
+
+function emptyUploadState(): UploadState {
+  return {
+    active: false,
+    completed: 0,
+    currentName: "",
+    progress: 0,
+    stage: "uploading",
+    total: 0,
+  };
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
 
 function initialDashboardSection(): Section {
   if (typeof window === "undefined") return "Create";
@@ -352,12 +376,20 @@ export function DashboardStudio({
   const [durationSeconds, setDurationSeconds] = useState<number>(5);
   const [fps, setFps] = useState<number>(24);
   const [seed, setSeed] = useState("");
-  const [sourceAssetId, setSourceAssetId] = useState("");
+  const [sourceAssetIds, setSourceAssetIds] = useState({
+    image_to_video: "",
+    video_to_video: "",
+  });
   const [selectedJobId, setSelectedJobId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStates, setUploadStates] = useState<
+    Record<Asset["kind"], UploadState>
+  >({
+    avatar: emptyUploadState(),
+    source_image: emptyUploadState(),
+    source_video: emptyUploadState(),
+  });
   const [checkoutId, setCheckoutId] = useState("");
   const [studioError, setStudioError] = useState("");
   const [notice, setNotice] = useState("");
@@ -367,6 +399,7 @@ export function DashboardStudio({
   const [clock, setClock] = useState(() => Date.now());
 
   const assetInputRef = useRef<HTMLInputElement>(null);
+  const jobsRefreshInFlight = useRef(false);
 
   const modeAction = MODE_ACTIONS[mode];
   const modePresets = useMemo(
@@ -384,7 +417,22 @@ export function DashboardStudio({
       ),
     [assets, modeAction],
   );
+  const sourceAssetId =
+    modeAction === "image_to_video"
+      ? sourceAssetIds.image_to_video
+      : modeAction === "video_to_video"
+        ? sourceAssetIds.video_to_video
+        : "";
   const sourceAsset = matchingAssets.find((asset) => asset.id === sourceAssetId) ?? null;
+  const activeUploadKind =
+    modeAction === "image_to_video"
+      ? "source_image"
+      : modeAction === "video_to_video"
+        ? "source_video"
+        : null;
+  const activeUploadState = activeUploadKind ? uploadStates[activeUploadKind] : null;
+  const uploading = Object.values(uploadStates).some((state) => state.active);
+  const creatorUploading = activeUploadState?.active ?? false;
   const selectedJob =
     jobs.find((job) => job.id === selectedJobId) ??
     jobs.find((job) => ACTIVE_STATUSES.has(job.status)) ??
@@ -453,6 +501,8 @@ export function DashboardStudio({
   }
 
   async function refreshJobsAndWallet() {
+    if (jobsRefreshInFlight.current) return;
+    jobsRefreshInFlight.current = true;
     try {
       const [jobData, walletData, notificationData] = await Promise.all([
         requestJson<GenerationJob[]>("/api/generation/jobs"),
@@ -466,6 +516,8 @@ export function DashboardStudio({
       if (!handleUnauthorized(error)) {
         setStudioError(error instanceof Error ? error.message : "Unable to refresh render status.");
       }
+    } finally {
+      jobsRefreshInFlight.current = false;
     }
   }
 
@@ -481,8 +533,21 @@ export function DashboardStudio({
     if (!hasActiveJobs) return;
     const timer = window.setInterval(() => {
       void refreshJobsAndWallet();
-    }, 6000);
-    return () => window.clearInterval(timer);
+    }, 2000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshJobsAndWallet();
+      }
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasActiveJobs]);
 
@@ -504,8 +569,16 @@ export function DashboardStudio({
 
   function chooseMode(nextMode: ModeLabel) {
     setMode(nextMode);
-    setSourceAssetId("");
     setActivePresetId("");
+  }
+
+  function selectSourceAsset(action: GenerationMode, assetId: string) {
+    if (action === "image_to_video" || action === "video_to_video") {
+      setSourceAssetIds((current) => ({
+        ...current,
+        [action]: assetId,
+      }));
+    }
   }
 
   function goHome() {
@@ -516,95 +589,187 @@ export function DashboardStudio({
     setView("home");
   }
 
-  async function uploadAsset(file: File, kind?: Asset["kind"]) {
+  function updateUploadState(
+    kind: Asset["kind"],
+    update: Partial<UploadState>,
+  ) {
+    setUploadStates((current) => ({
+      ...current,
+      [kind]: {
+        ...current[kind],
+        ...update,
+      },
+    }));
+  }
+
+  async function completeAssetUpload(assetId: string) {
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await requestJson<{ asset: Asset }>(
+          `/api/assets/${assetId}/complete`,
+          {
+            method: "POST",
+            signal: AbortSignal.timeout(25_000),
+          },
+        );
+      } catch (error) {
+        lastError = error;
+        if (
+          error instanceof ApiRequestError &&
+          [400, 401, 404].includes(error.status)
+        ) {
+          throw error;
+        }
+        if (attempt < 2) {
+          await wait(500 * (attempt + 1));
+        }
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("The uploaded file could not be verified.");
+  }
+
+  async function uploadSingleAsset(
+    file: File,
+    resolvedKind: Asset["kind"],
+    onProgress: (progress: number) => void,
+  ) {
     const contentType = normalizeAssetMimeType(file.name, file.type);
-    const resolvedKind =
-      kind ??
-      (contentType.startsWith("image/") ? "source_image" : "source_video");
-    setUploading(true);
-    setUploadProgress(0);
+    const initialized = await requestJson<{
+      asset: Asset;
+      upload: { bucket: string; path: string; token: string };
+    }>("/api/assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        kind: resolvedKind,
+        mimeType: contentType,
+        sizeBytes: file.size,
+      }),
+    });
+
+    if (shouldUseResumableUpload(file)) {
+      await uploadResumably({
+        bucket: initialized.upload.bucket,
+        contentType,
+        file,
+        onProgress,
+        path: initialized.upload.path,
+        token: initialized.upload.token,
+      });
+    } else {
+      const supabase = createClient();
+      const { error: uploadError } = await supabase.storage
+        .from(initialized.upload.bucket)
+        .uploadToSignedUrl(initialized.upload.path, initialized.upload.token, file, {
+          cacheControl: "3600",
+          contentType,
+        });
+      if (uploadError) throw uploadError;
+      onProgress(100);
+    }
+
+    updateUploadState(resolvedKind, { progress: 100, stage: "verifying" });
+    return (await completeAssetUpload(initialized.asset.id)).asset;
+  }
+
+  async function uploadAssets(files: File[], kind?: Asset["kind"]) {
+    if (!files.length) return;
     setStudioError("");
     setNotice("");
 
-    try {
-      const initialized = await requestJson<{
-        asset: Asset;
-        upload: { bucket: string; path: string; token: string };
-      }>("/api/assets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          kind: resolvedKind,
-          mimeType: contentType,
-          sizeBytes: file.size,
-        }),
+    const queue = files.map((file) => {
+      const contentType = normalizeAssetMimeType(file.name, file.type);
+      return {
+        file,
+        kind:
+          kind ??
+          (contentType.startsWith("image/")
+            ? ("source_image" as const)
+            : ("source_video" as const)),
+      };
+    });
+    const successes: Asset[] = [];
+    const failures: string[] = [];
+
+    for (let index = 0; index < queue.length; index += 1) {
+      const item = queue[index];
+      updateUploadState(item.kind, {
+        active: true,
+        completed: index,
+        currentName: item.file.name,
+        progress: 0,
+        stage: "uploading",
+        total: queue.length,
       });
 
-      if (shouldUseResumableUpload(file)) {
-        await uploadResumably({
-          bucket: initialized.upload.bucket,
-          contentType,
-          file,
-          onProgress: setUploadProgress,
-          path: initialized.upload.path,
-          token: initialized.upload.token,
+      try {
+        const uploaded = await uploadSingleAsset(
+          item.file,
+          item.kind,
+          (progress) => updateUploadState(item.kind, { progress }),
+        );
+        successes.push(uploaded);
+
+        if (item.kind === "avatar") {
+          const refreshedProfile = await requestJson<UserProfile>("/api/profile");
+          setProfile(refreshedProfile);
+        } else {
+          setAssets((current) => [
+            uploaded,
+            ...current.filter((asset) => asset.id !== uploaded.id),
+          ]);
+          selectSourceAsset(
+            item.kind === "source_image" ? "image_to_video" : "video_to_video",
+            uploaded.id,
+          );
+        }
+      } catch (error) {
+        if (handleUnauthorized(error)) {
+          return;
+        }
+        failures.push(
+          error instanceof Error ? error.message : `${item.file.name} could not be uploaded.`,
+        );
+      } finally {
+        updateUploadState(item.kind, {
+          active: false,
+          completed: index + 1,
+          currentName: "",
+          progress: 0,
+          stage: "uploading",
         });
-      } else {
-        const supabase = createClient();
-        const { error: uploadError } = await supabase.storage
-          .from(initialized.upload.bucket)
-          .uploadToSignedUrl(initialized.upload.path, initialized.upload.token, file, {
-            cacheControl: "3600",
-            contentType,
-          });
-        if (uploadError) throw uploadError;
-        setUploadProgress(100);
       }
+    }
 
-      const completed = await requestJson<{ asset: Asset }>(
-        `/api/assets/${initialized.asset.id}/complete`,
-        { method: "POST" },
+    if (successes.length) {
+      const avatarOnly = successes.every((asset) => asset.kind === "avatar");
+      setNotice(
+        avatarOnly
+          ? "Profile photo updated."
+          : `${successes.length} ${successes.length === 1 ? "asset is" : "assets are"} ready to use.`,
       );
-
-      if (resolvedKind === "avatar") {
-        const refreshedProfile = await requestJson<UserProfile>("/api/profile");
-        setProfile(refreshedProfile);
-        setNotice("Profile photo updated.");
-      } else {
-        const refreshedAssets = await requestJson<Asset[]>("/api/assets");
-        const refreshedAsset =
-          refreshedAssets.find((asset) => asset.id === completed.asset.id) ??
-          completed.asset;
-        setAssets(refreshedAssets);
-        setSourceAssetId(refreshedAsset.id);
-        setMode(resolvedKind === "source_image" ? "Image to video" : "Video to video");
-        setNotice(`${refreshedAsset.original_name || "Asset"} is ready to use.`);
-      }
-
-      return completed.asset;
-    } catch (error) {
-      if (!handleUnauthorized(error)) {
-        setStudioError(error instanceof Error ? error.message : "The file could not be uploaded.");
-      }
-      return null;
-    } finally {
-      setUploading(false);
-      window.setTimeout(() => setUploadProgress(0), 500);
+    }
+    if (failures.length) {
+      setStudioError(failures[0]);
     }
   }
 
-  async function handleCreatorFile(file: File | undefined) {
-    if (!file || modeAction === "text_to_video") return;
-    await uploadAsset(
-      file,
-      modeAction === "image_to_video" ? "source_image" : "source_video",
-    );
+  async function handleCreatorFiles(files: File[]) {
+    if (!files.length || modeAction === "text_to_video") return;
+    const uploadKind =
+      modeAction === "image_to_video" ? "source_image" : "source_video";
+    await uploadAssets(files, uploadKind);
   }
 
   function handleDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
-    void handleCreatorFile(event.dataTransfer.files[0]);
+    void handleCreatorFiles(Array.from(event.dataTransfer.files));
   }
 
   async function handleGenerate() {
@@ -672,7 +837,7 @@ export function DashboardStudio({
     if (configuration?.resolution_key) setResolutionKey(configuration.resolution_key);
     if (configuration?.duration_seconds) setDurationSeconds(configuration.duration_seconds);
     if (configuration?.fps) setFps(configuration.fps);
-    setSourceAssetId(job.source_asset_id || "");
+    selectSourceAsset(job.action, job.source_asset_id || "");
     setSelectedJobId(job.id);
     navigate("Create");
     setNotice("Generation settings copied. Review them before submitting a new render.");
@@ -709,7 +874,12 @@ export function DashboardStudio({
     try {
       await requestJson<void>(`/api/assets/${asset.id}`, { method: "DELETE" });
       setAssets((current) => current.filter((item) => item.id !== asset.id));
-      if (sourceAssetId === asset.id) setSourceAssetId("");
+      setSourceAssetIds((current) => ({
+        image_to_video:
+          current.image_to_video === asset.id ? "" : current.image_to_video,
+        video_to_video:
+          current.video_to_video === asset.id ? "" : current.video_to_video,
+      }));
       setNotice("Asset removed.");
     } catch (error) {
       setStudioError(error instanceof Error ? error.message : "The asset could not be deleted.");
@@ -980,11 +1150,34 @@ export function DashboardStudio({
                 {modeAction !== "text_to_video" && (
                   <div className="source-control">
                     <label
-                      className={`dropzone ${sourceAsset ? "has-file" : ""}`}
+                      className={`dropzone ${sourceAsset && !creatorUploading ? "has-file" : ""}`}
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={handleDrop}
                     >
-                      {sourceAsset ? (
+                      {creatorUploading && activeUploadState ? (
+                        <>
+                          <RefreshCw className="spin" />
+                          <b>
+                            {activeUploadState.stage === "verifying"
+                              ? "Verifying upload…"
+                              : `Uploading ${activeUploadState.progress}%`}
+                          </b>
+                          <span>
+                            {activeUploadState.total > 1
+                              ? `${Math.min(activeUploadState.completed + 1, activeUploadState.total)} of ${activeUploadState.total} · ${activeUploadState.currentName}`
+                              : activeUploadState.stage === "verifying"
+                                ? "The file is in storage. Morphly is making it ready to use."
+                                : "Keep this page open while the file is transferred."}
+                          </span>
+                          <span className="upload-progress-track">
+                            <i
+                              style={{
+                                width: `${Math.max(3, activeUploadState.progress)}%`,
+                              }}
+                            />
+                          </span>
+                        </>
+                      ) : sourceAsset ? (
                         <>
                           <MediaPreview asset={sourceAsset} />
                           <div>
@@ -994,51 +1187,61 @@ export function DashboardStudio({
                         </>
                       ) : (
                         <>
-                          {uploading ? <RefreshCw className="spin" /> : <Upload />}
-                          <b>
-                            {uploading
-                              ? `Uploading ${uploadProgress}%`
-                              : `Upload a ${modeAction === "image_to_video" ? "source image" : "source video"}`}
-                          </b>
+                          <Upload />
+                          <b>{`Upload ${modeAction === "image_to_video" ? "source images" : "a source video"}`}</b>
                           <span>
-                            {uploading
-                              ? "Keep this page open while the file is transferred."
-                              : modeAction === "image_to_video"
-                              ? "JPG, PNG or WebP · max 15 MB"
+                            {modeAction === "image_to_video"
+                              ? "Select one or more JPG, PNG or WebP files · max 15 MB each"
                               : "MP4, MOV or WebM · max 200 MB"}
                           </span>
-                          {uploading && (
-                            <span className="upload-progress-track">
-                              <i style={{ width: `${Math.max(3, uploadProgress)}%` }} />
-                            </span>
-                          )}
                         </>
                       )}
                       <input
                         accept={modeAction === "image_to_video" ? "image/jpeg,image/png,image/webp" : "video/mp4,video/quicktime,video/webm"}
-                        disabled={uploading}
+                        disabled={creatorUploading}
+                        multiple={modeAction === "image_to_video"}
                         onChange={(event) => {
-                          void handleCreatorFile(event.target.files?.[0]);
+                          void handleCreatorFiles(Array.from(event.target.files ?? []));
                           event.currentTarget.value = "";
                         }}
                         type="file"
                       />
                     </label>
                     {matchingAssets.length > 0 && (
-                      <label className="existing-asset-select">
-                        Or use an existing asset
-                        <select
-                          onChange={(event) => setSourceAssetId(event.target.value)}
-                          value={sourceAssetId}
-                        >
-                          <option value="">Choose an asset</option>
+                      <div className="source-asset-library">
+                        <div>
+                          <b>
+                            Your {modeAction === "image_to_video" ? "images" : "videos"}
+                          </b>
+                          <span>Select one source · {matchingAssets.length} stored</span>
+                        </div>
+                        <div className="source-asset-list">
                           {matchingAssets.map((asset) => (
-                            <option key={asset.id} value={asset.id}>
-                              {asset.original_name || "Untitled asset"}
-                            </option>
+                            <article
+                              className={sourceAssetId === asset.id ? "selected" : ""}
+                              key={asset.id}
+                            >
+                              <button
+                                className="source-asset-choice"
+                                onClick={() => selectSourceAsset(modeAction, asset.id)}
+                                type="button"
+                              >
+                                <MediaPreview asset={asset} />
+                                <span>{asset.original_name || "Untitled asset"}</span>
+                                {sourceAssetId === asset.id && <Check />}
+                              </button>
+                              <button
+                                aria-label={`Delete ${asset.original_name || "asset"}`}
+                                className="source-asset-delete"
+                                onClick={() => void deleteAsset(asset)}
+                                type="button"
+                              >
+                                <Trash2 />
+                              </button>
+                            </article>
                           ))}
-                        </select>
-                      </label>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1144,7 +1347,7 @@ export function DashboardStudio({
                 </div>
                 <button
                   className="generate-btn"
-                  disabled={submitting || uploading}
+                  disabled={submitting || creatorUploading}
                   onClick={handleGenerate}
                   type="button"
                 >
@@ -1263,10 +1466,14 @@ export function DashboardStudio({
             assets={assets.filter((asset) => asset.kind !== "avatar")}
             inputRef={assetInputRef}
             onDelete={deleteAsset}
-            onFile={(file) => void uploadAsset(file)}
+            onFiles={(files) => void uploadAssets(files)}
             onUse={(asset) => {
-              setMode(asset.kind === "source_image" ? "Image to video" : "Video to video");
-              setSourceAssetId(asset.id);
+              const action =
+                asset.kind === "source_image" ? "image_to_video" : "video_to_video";
+              setMode(
+                action === "image_to_video" ? "Image to video" : "Video to video",
+              );
+              selectSourceAsset(action, asset.id);
               navigate("Create");
             }}
             uploading={uploading}
@@ -1286,12 +1493,12 @@ export function DashboardStudio({
         {active === "Settings" && profile && (
           <SettingsPage
             key={`${profile.id}:${profile.displayName}:${profile.company}:${profile.emailNotifications}:${profile.generationNotifications}`}
-            onAvatar={(file) => void uploadAsset(file, "avatar")}
+            onAvatar={(file) => void uploadAssets([file], "avatar")}
             onProfile={setProfile}
             onSignOut={signOut}
             onSuccess={setNotice}
             profile={profile}
-            uploading={uploading}
+            uploading={uploadStates.avatar.active}
           />
         )}
       </main>
@@ -1487,14 +1694,14 @@ function AssetsPage({
   assets,
   inputRef,
   onDelete,
-  onFile,
+  onFiles,
   onUse,
   uploading,
 }: {
   assets: Asset[];
   inputRef: React.RefObject<HTMLInputElement | null>;
   onDelete: (asset: Asset) => void;
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
   onUse: (asset: Asset) => void;
   uploading: boolean;
 }) {
@@ -1504,10 +1711,11 @@ function AssetsPage({
         accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
         hidden
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          const file = event.target.files?.[0];
-          if (file) onFile(file);
+          const files = Array.from(event.target.files ?? []);
+          if (files.length) onFiles(files);
           event.currentTarget.value = "";
         }}
+        multiple
         ref={inputRef}
         type="file"
       />

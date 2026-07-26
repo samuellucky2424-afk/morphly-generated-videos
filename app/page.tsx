@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import {
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { DashboardStudio as LiveDashboard } from "./dashboard-studio";
 import { LiveAuth } from "./live-auth";
+import { createClient } from "@/src/lib/supabase/client";
 
 type View = "home" | "dashboard" | "auth";
 
@@ -107,18 +108,61 @@ function Home({ setView }: { setView: (v: View) => void }) {
 function Footer() { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><a href="/admin/login">Admin</a><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
 
 export default function HomePage() {
- const [view,setView]=useState<View>("home");
+ const [view,setCurrentView]=useState<View>("home");
+ const [sessionReady,setSessionReady]=useState(false);
+
+ const setView=useCallback((nextView: View)=>{
+   const url=new URL(window.location.href);
+   if(nextView==="dashboard"){
+     url.searchParams.set("view","dashboard");
+     url.searchParams.delete("auth");
+     url.searchParams.delete("reset");
+   }else if(nextView==="auth"){
+     url.searchParams.set("view","auth");
+     url.searchParams.delete("section");
+   }else{
+     url.searchParams.delete("view");
+     url.searchParams.delete("section");
+     url.searchParams.delete("auth");
+     url.searchParams.delete("reset");
+   }
+   window.history.replaceState(null,"",url);
+   setCurrentView(nextView);
+ },[]);
+
  useEffect(()=>{
-   const params=new URLSearchParams(location.search);
+   let active=true;
+   const params=new URLSearchParams(window.location.search);
+   const resetRequested=params.get("reset")==="1";
    const requestedView: View =
      params.get("auth")==="signup"||params.get("view")==="auth"
        ? "auth"
        : params.get("view")==="dashboard"
          ? "dashboard"
          : "home";
-   const timer=window.setTimeout(()=>setView(requestedView),0);
-   return ()=>window.clearTimeout(timer);
- },[]);
+   const supabase=createClient();
+
+   void supabase.auth.getSession().then(({data})=>{
+     if(!active)return;
+     const nextView =
+       resetRequested
+         ? "auth"
+         : data.session && requestedView==="auth"
+           ? "dashboard"
+           : !data.session && requestedView==="dashboard"
+             ? "auth"
+             : requestedView;
+     setView(nextView);
+     setSessionReady(true);
+   }).catch(()=>{
+     if(!active)return;
+     setView(requestedView==="dashboard"?"auth":requestedView);
+     setSessionReady(true);
+   });
+
+   return ()=>{active=false};
+ },[setView]);
  useEffect(()=>{scrollTo(0,0)},[view]);
+ if(!sessionReady)return <div className="app-session-loading" aria-label="Loading Morphly"/>;
  return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
 }

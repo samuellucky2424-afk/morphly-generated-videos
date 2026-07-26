@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/src/lib/env';
-import { extractOutputLocation } from '@/src/lib/generation-reconciliation';
+import {
+  extractOutputLocation,
+  reconcileGenerationJob,
+} from '@/src/lib/generation-reconciliation';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +49,9 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const { data: job, error: jobError } = await admin
       .from('generation_jobs')
-      .select('id,user_id,status,prompt')
+      .select(
+        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at',
+      )
       .eq('id', jobId)
       .single();
 
@@ -74,9 +79,8 @@ export async function POST(request: Request) {
     if (status === 'COMPLETED') {
       const outputLocation = extractOutputLocation(payload.output);
       if (!outputLocation) {
-        return new NextResponse('Completed job did not include an output URL', {
-          status: 422,
-        });
+        await reconcileGenerationJob(admin, job);
+        return new NextResponse('OK', { status: 200 });
       }
 
       const { error: updateError } = await admin
