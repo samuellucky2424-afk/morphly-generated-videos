@@ -100,9 +100,13 @@ type GenerationJob = {
       resolution_key?: ResolutionKey;
     };
   } | null;
+  runpod_delay_ms?: number | null;
+  runpod_execution_ms?: number | null;
   seed?: number | null;
   source_asset_id?: string | null;
+  started_at?: string | null;
   status: string;
+  submitted_at?: string | null;
   title?: string | null;
   width: number;
 };
@@ -211,6 +215,26 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatDuration(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function jobTimingLabel(job: GenerationJob, now: number) {
+  const providerDuration =
+    Number(job.runpod_delay_ms ?? 0) + Number(job.runpod_execution_ms ?? 0);
+  if (job.status === "completed" && providerDuration > 0) {
+    return `Render time ${formatDuration(providerDuration)}`;
+  }
+
+  const startedAt = new Date(job.submitted_at || job.created_at).getTime();
+  const endedAt = job.completed_at ? new Date(job.completed_at).getTime() : now;
+  const label = job.status === "completed" ? "Render time" : "Elapsed";
+  return `${label} ${formatDuration(Math.max(0, endedAt - startedAt))}`;
 }
 
 function statusTone(status: string) {
@@ -340,6 +364,7 @@ export function DashboardStudio({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
 
   const assetInputRef = useRef<HTMLInputElement>(null);
 
@@ -459,6 +484,12 @@ export function DashboardStudio({
     }, 6000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasActiveJobs]);
+
+  useEffect(() => {
+    if (!hasActiveJobs) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
   }, [hasActiveJobs]);
 
   function navigate(section: Section) {
@@ -1152,7 +1183,8 @@ export function DashboardStudio({
                       </div>
                       <b>{selectedJob.status === "queued" ? "Waiting for a worker" : "Rendering your video"}</b>
                       <span>
-                        {selectedJob.progress_percent}% · {selectedJob.credit_cost} credits reserved
+                        {selectedJob.progress_percent}% · {jobTimingLabel(selectedJob, clock)} ·{" "}
+                        {selectedJob.credit_cost} credits reserved
                       </span>
                       <div>
                         <i style={{ width: `${Math.max(4, selectedJob.progress_percent)}%` }} />
@@ -1204,6 +1236,7 @@ export function DashboardStudio({
               </button>
             </div>
             <JobGrid
+              clock={clock}
               jobs={jobs.slice(0, 6)}
               onCopy={copyJobToCreator}
               onSelect={(job) => setSelectedJobId(job.id)}
@@ -1214,6 +1247,7 @@ export function DashboardStudio({
 
         {active === "My videos" && (
           <VideosPage
+            clock={clock}
             jobs={jobs}
             onCancel={cancelJob}
             onCopy={copyJobToCreator}
@@ -1266,11 +1300,13 @@ export function DashboardStudio({
 }
 
 function JobGrid({
+  clock,
   jobs,
   onCopy,
   onSelect,
   selectedJobId,
 }: {
+  clock: number;
   jobs: GenerationJob[];
   onCopy: (job: GenerationJob) => void;
   onSelect: (job: GenerationJob) => void;
@@ -1300,6 +1336,7 @@ function JobGrid({
                 {ACTION_LABELS[job.action]} · {job.duration_seconds}s · {job.width}×{job.height}
               </p>
               <span className={statusTone(job.status)}>{job.status.replaceAll("_", " ")}</span>
+              <small className="job-timing">{jobTimingLabel(job, clock)}</small>
             </div>
           </button>
           <button aria-label="Use generation settings" onClick={() => onCopy(job)} type="button">
@@ -1312,6 +1349,7 @@ function JobGrid({
 }
 
 function VideosPage({
+  clock,
   jobs,
   onCancel,
   onCopy,
@@ -1320,6 +1358,7 @@ function VideosPage({
   onSelect,
   selectedJobId,
 }: {
+  clock: number;
   jobs: GenerationJob[];
   onCancel: (job: GenerationJob) => void;
   onCopy: (job: GenerationJob) => void;
@@ -1381,7 +1420,7 @@ function VideosPage({
                 </span>
                 <span>
                   <b>{job.title || job.prompt}</b>
-                  <small>{formatDate(job.created_at)}</small>
+                  <small>{formatDate(job.created_at)} · {jobTimingLabel(job, clock)}</small>
                 </span>
                 <em className={statusTone(job.status)}>{job.status.replaceAll("_", " ")}</em>
               </button>
@@ -1396,7 +1435,7 @@ function VideosPage({
                   <div className="generating">
                     <RefreshCw />
                     <b>Render in progress</b>
-                    <span>{selected.progress_percent}% complete</span>
+                    <span>{selected.progress_percent}% complete · {jobTimingLabel(selected, clock)}</span>
                   </div>
                 ) : (
                   <div className="preview-empty-real">
@@ -1414,6 +1453,7 @@ function VideosPage({
                 <span>{selected.duration_seconds} seconds</span>
                 <span>{selected.fps} fps</span>
                 <span>{selected.credit_cost} credits</span>
+                <span>{jobTimingLabel(selected, clock)}</span>
               </div>
               <div className="video-actions">
                 {selected.output_url && (

@@ -14,12 +14,25 @@ interface RunPodInput {
   seed?: number;
   image?: string; // For Image to Video
   video?: string; // For Video to Video
+  job_id?: string;
+  user_id?: string;
+  output_bucket?: string;
+  output_path?: string;
 }
 
 interface RunPodJobResponse {
   id: string;
   status: string;
 }
+
+export type RunPodStatusResponse = RunPodJobResponse & {
+  delayTime?: number;
+  error?: string;
+  executionTime?: number;
+  output?: unknown;
+  progress?: number;
+  workerId?: string;
+};
 
 export async function submitRunPodJob(jobId: string, input: RunPodInput): Promise<RunPodJobResponse> {
   const url = `https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`;
@@ -72,4 +85,28 @@ export async function cancelRunPodJob(runpodJobId: string) {
   if (!response.ok && response.status !== 404) {
     throw new Error('RunPod job cancellation failed');
   }
+}
+
+export async function getRunPodJobStatus(
+  runpodJobId: string,
+): Promise<RunPodStatusResponse | null> {
+  const response = await fetch(
+    `https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${encodeURIComponent(runpodJobId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${env.RUNPOD_API_KEY}`,
+      },
+      cache: 'no-store',
+    },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`RunPod status request failed with ${response.status}`);
+  }
+
+  return (await response.json()) as RunPodStatusResponse;
 }

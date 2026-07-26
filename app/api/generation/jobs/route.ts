@@ -11,6 +11,7 @@ import {
   getResolution,
   RESOLUTION_OPTIONS,
 } from '@/src/lib/generation-config';
+import { reconcileGenerationJob } from '@/src/lib/generation-reconciliation';
 import { submitRunPodJob } from '@/src/lib/runpod';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
@@ -73,6 +74,14 @@ async function serializeJob(
     frames: Number(job.frames ?? 0),
     height: Number(job.height ?? 0),
     progress_percent: Number(job.progress_percent ?? 0),
+    runpod_delay_ms:
+      job.runpod_delay_ms === null || job.runpod_delay_ms === undefined
+        ? null
+        : Number(job.runpod_delay_ms),
+    runpod_execution_ms:
+      job.runpod_execution_ms === null || job.runpod_execution_ms === undefined
+        ? null
+        : Number(job.runpod_execution_ms),
     seed: job.seed === null || job.seed === undefined ? null : Number(job.seed),
     width: Number(job.width ?? 0),
     output_url: outputUrl,
@@ -83,10 +92,29 @@ export async function GET() {
   try {
     const user = await requireApiUser();
     const admin = createAdminClient();
+
+    const { data: activeJobs, error: activeJobsError } = await admin
+      .from('generation_jobs')
+      .select(
+        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at',
+      )
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .in('status', ['created', 'reserving', 'queued', 'processing'])
+      .limit(2);
+
+    if (activeJobsError) {
+      throw activeJobsError;
+    }
+
+    await Promise.allSettled(
+      (activeJobs ?? []).map((job) => reconcileGenerationJob(admin, job)),
+    );
+
     const { data, error } = await admin
       .from('generation_jobs')
       .select(
-        'id,preset_id,action,title,prompt,negative_prompt,status,progress_percent,credit_cost,source_asset_id,output_storage_path,error_message,created_at,completed_at,duration_seconds,fps,width,height,frames,seed,aspect_ratio,request_snapshot,generation_presets(name,slug)',
+        'id,preset_id,action,title,prompt,negative_prompt,status,progress_percent,credit_cost,source_asset_id,output_storage_path,error_message,created_at,submitted_at,started_at,completed_at,duration_seconds,fps,width,height,frames,seed,aspect_ratio,runpod_delay_ms,runpod_execution_ms,request_snapshot,generation_presets(name,slug)',
       )
       .eq('user_id', user.id)
       .is('deleted_at', null)
@@ -365,6 +393,10 @@ export async function POST(request: NextRequest) {
         seed,
         image: input.mode === 'image_to_video' ? sourceUrl ?? undefined : undefined,
         video: input.mode === 'video_to_video' ? sourceUrl ?? undefined : undefined,
+        job_id: job.id,
+        user_id: user.id,
+        output_bucket: env.SUPABASE_VIDEO_BUCKET,
+        output_path: `generation-outputs/${user.id}/${job.id}/output.mp4`,
       });
 
       const { error: updateError } = await admin
