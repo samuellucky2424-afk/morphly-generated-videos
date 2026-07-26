@@ -12,8 +12,8 @@ interface RunPodInput {
   num_inference_steps: number;
   guidance_scale: number;
   seed?: number;
-  image?: string; // For Image to Video
-  video?: string; // For Video to Video
+  image_path?: string;
+  video_path?: string;
   job_id?: string;
   user_id?: string;
   output_bucket?: string;

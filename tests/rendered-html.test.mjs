@@ -45,6 +45,15 @@ test("renders Morphly production metadata", async () => {
     /<meta(?=[^>]*\bname=["']description["'])(?=[^>]*\bcontent=["']Create cinematic videos from text, images and existing footage with Morphly’s LTX 2\.3-powered creative studio\.["'])[^>]*>/i,
   );
   assert.match(html, /rel=["']canonical["']/i);
+  for (const missingMediaPath of [
+    "/media/morphly-video-transform-poster.webp",
+    "/media/morphly-product-study-poster.webp",
+    "/media/morphly-dashboard.webp",
+    "/media/morphly-image-motion-poster.webp",
+    "/media/morphly-hero-poster.webp",
+  ]) {
+    assert.doesNotMatch(html, new RegExp(missingMediaPath));
+  }
 });
 
 test("admin routes fail closed without a verified administrator session", async () => {
