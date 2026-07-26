@@ -11,21 +11,31 @@ export async function POST(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const payload = await request.json();
+    const payload = await request.json() as {
+      event?: string;
+      data?: {
+        id?: string | number;
+        status?: string;
+      };
+    };
     const supabase = await createClient();
 
     // Log the event securely
     await supabase.from('payment_events').insert({
       provider: 'flutterwave',
-      provider_event_id: payload.event?.id?.toString() || payload.data?.id?.toString() || Date.now().toString(),
+      provider_event_id: payload.data?.id?.toString() || Date.now().toString(),
       event_type: payload.event,
       signature_valid: true,
       payload_hash: crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex'),
       payload: payload,
     });
 
-    if (payload.event === 'charge.completed' && payload.data.status === 'successful') {
-      const transactionId = payload.data.id;
+    if (
+      payload.event === 'charge.completed' &&
+      payload.data?.status === 'successful' &&
+      payload.data.id != null
+    ) {
+      const transactionId = payload.data.id.toString();
       
       // Verify with Flutterwave directly to avoid spoofed payloads
       const verifiedData = await verifyTransaction(transactionId);

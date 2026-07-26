@@ -15,7 +15,13 @@ export async function POST(request: Request) {
     // RunPod doesn't have native webhook signatures like Stripe, so a secret query param is often used.
     // For now, we will trust the jobId UUID acting as a capability URL, but ideally verify a token.
 
-    const payload = await request.json();
+    const payload = await request.json() as {
+      status: string;
+      output?: { url?: string } | string[];
+      executionTime?: number;
+      delayTime?: number;
+      error?: string;
+    };
     const supabase = await createClient();
     
     // Log event
@@ -27,7 +33,9 @@ export async function POST(request: Request) {
     });
 
     if (payload.status === 'COMPLETED') {
-      const outputUrl = payload.output?.url || (payload.output && payload.output[0]); // Depending on template output format
+      const outputUrl = Array.isArray(payload.output)
+        ? payload.output[0]
+        : payload.output?.url; // Depending on template output format
 
       // Update Job
       await supabase

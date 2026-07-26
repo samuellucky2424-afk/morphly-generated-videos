@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/src/lib/auth';
 import { createClient } from '@/src/lib/supabase/server';
 import { submitRunPodJob } from '@/src/lib/runpod';
-import { v4 as uuidv4 } from 'uuid';
 
 export async function GET() {
   try {
@@ -29,7 +28,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { presetId, prompt, negativePrompt, sourceAssetPath } = await request.json();
+    const { presetId, prompt, negativePrompt, sourceAssetPath } = await request.json() as {
+      presetId?: string;
+      prompt?: string;
+      negativePrompt?: string;
+      sourceAssetPath?: string;
+    };
 
     if (!presetId || !prompt) {
       return NextResponse.json({ error: 'presetId and prompt are required' }, { status: 400 });
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid or inactive preset' }, { status: 400 });
     }
 
-    const clientRequestId = uuidv4();
+    const clientRequestId = crypto.randomUUID();
     const idempotencyKey = `gen-reserve:${clientRequestId}`;
 
     // 2. Create Job in Supabase

@@ -2,6 +2,16 @@ import { env } from './env';
 
 const FLW_API_BASE = 'https://api.flutterwave.com/v3';
 
+interface FlutterwaveTransaction {
+  id: string | number;
+  status: string;
+  tx_ref: string;
+  amount: number;
+  currency: string;
+  app_fee: number;
+  payment_type: string;
+}
+
 export async function generateCheckoutUrl(
   tx_ref: string,
   amount: number,
@@ -39,11 +49,11 @@ export async function generateCheckoutUrl(
     throw new Error('Failed to create Flutterwave checkout session');
   }
 
-  const data = await response.json();
+  const data = await response.json() as { data: { link: string } };
   return data.data.link; // The hosted checkout URL
 }
 
-export async function verifyTransaction(transactionId: string) {
+export async function verifyTransaction(transactionId: string): Promise<FlutterwaveTransaction> {
   const response = await fetch(`${FLW_API_BASE}/transactions/${transactionId}/verify`, {
     method: 'GET',
     headers: {
@@ -57,6 +67,6 @@ export async function verifyTransaction(transactionId: string) {
     throw new Error('Failed to verify Flutterwave transaction');
   }
 
-  const data = await response.json();
+  const data = await response.json() as { data: FlutterwaveTransaction };
   return data.data; // Includes status, amount, currency, tx_ref
 }

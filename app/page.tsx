@@ -19,6 +19,10 @@ const jobs = [
   { title: "Luxury watch macro", mode: "Video to video", status: "Ready", time: "00:10", tone: "purple" },
 ];
 
+async function responseJson<T>(response: Response): Promise<T> {
+  return response.json() as Promise<T>;
+}
+
 function Logo() {
   return <button onClick={() => location.hash = ""} className="logo" aria-label="Morphly home">
     <span className="logo-mark"><Sparkles size={17}/></span><span>Morphly</span><em>LTX 2.3</em>
@@ -94,7 +98,6 @@ function Home({ setView }: { setView: (v: View) => void }) {
         </motion.article>)}
       </div>
     </section>
-    <section className="section studio-section" id="services">
     <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto" id="services">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
         <div>
@@ -104,7 +107,7 @@ function Home({ setView }: { setView: (v: View) => void }) {
         <p className="max-w-[430px] text-[#8d968e] leading-relaxed m-0">Advanced generation modes with simple controls—designed for marketers, filmmakers, agencies and ambitious brands.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[["Text to video","Write a scene. Morphly handles composition, movement and light.","01",<MessageSquareText key="a"/>],["Image to video","Give still images natural motion without losing character or detail.","02",<ImageIcon key="b"/>],["Video to video","Transform footage into a new style while preserving its original movement.","03",<Film key="c"/>]].map((x,i)=><motion.article key={x[0]} whileHover={{y:-8}} className={`bg-[#0d120f] border rounded-2xl p-4 pb-6 transition-all duration-300 ${i===1?'border-[#dfff4547]':'border-[#ffffff20]'}`}>
+        {[["Text to video","Write a scene. Morphly handles composition, movement and light.","01",<MessageSquareText key="a"/>],["Image to video","Give still images natural motion without losing character or detail.","02",<ImageIcon key="b"/>],["Video to video","Transform footage into a new style while preserving its original movement.","03",<Film key="c"/>]].map((x,i)=><motion.article key={String(x[0])} whileHover={{y:-8}} className={`bg-[#0d120f] border rounded-2xl p-4 pb-6 transition-all duration-300 ${i===1?'border-[#dfff4547]':'border-[#ffffff20]'}`}>
           <div className="h-[250px] rounded-xl bg-[#151a17] relative overflow-hidden grid place-items-center mb-6"><div className="opacity-70 text-[#dfff45] [&>svg]:w-[70px] [&>svg]:h-[70px]">{x[3]}</div><span className="absolute right-4 top-4 font-mono text-[10px] text-[#737c74]">{x[2]}</span></div>
           <h3 className="text-2xl font-semibold mb-3 px-3">{x[0]}</h3><p className="text-[#8d968e] leading-relaxed px-3 mb-4">{x[1]}</p><button className="border-none bg-transparent text-[#dfff45] flex gap-2 text-xs font-extrabold px-3" onClick={()=>setView("dashboard")}>Open studio <ArrowRight size={15}/></button>
         </motion.article>)}
@@ -149,12 +152,12 @@ function Dashboard({setView}:{setView:(v:View)=>void}) {
   const [prompt, setPrompt] = useState("A cinematic close-up of a futuristic electric sports car gliding through a rain-soaked neon city at blue hour. Volumetric light, shallow depth of field, slow dolly shot.");
 
   useEffect(() => {
-    fetch('/api/wallet').then(r=>r.json()).then(setWallet).catch(console.error);
-    fetch('/api/generation/presets').then(r=>r.json()).then(data => {
+    fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
+    fetch('/api/generation/presets').then(responseJson<any[]>).then(data => {
       setPresets(data);
       if (data && data.length > 0) setActivePreset(data[0]);
     }).catch(console.error);
-    fetch('/api/generation/jobs').then(r=>r.json()).then(setJobsList).catch(console.error);
+    fetch('/api/generation/jobs').then(responseJson<any[]>).then(setJobsList).catch(console.error);
   }, [active]);
 
   async function handleGenerate() {
@@ -166,14 +169,14 @@ function Dashboard({setView}:{setView:(v:View)=>void}) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ presetId: activePreset.id, prompt })
       });
-      const data = await res.json();
+      const data = await responseJson<{ error?: string }>(res);
       if (data.error) {
         alert(data.error);
       } else {
         // Optimistically add job
         setJobsList([{ title: "New Generation", mode: activePreset.action, status: "processing", tone: "yellow", created_at: new Date() }, ...jobsList]);
         // Re-fetch wallet since credits were reserved
-        fetch('/api/wallet').then(r=>r.json()).then(setWallet).catch(console.error);
+        fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
       }
     } catch(e) {
       console.error(e);
@@ -182,7 +185,7 @@ function Dashboard({setView}:{setView:(v:View)=>void}) {
     // Simulate generation completion for UI demo
     setTimeout(() => {
       setGenerating(false);
-      fetch('/api/generation/jobs').then(r=>r.json()).then(setJobsList).catch(console.error);
+      fetch('/api/generation/jobs').then(responseJson<any[]>).then(setJobsList).catch(console.error);
     }, 4000);
   }
 
@@ -208,8 +211,8 @@ function AccountPage({active}:{active:string}) {
 
   useEffect(() => {
     if (active === "Billing") {
-      fetch('/api/wallet').then(res => res.json()).then(setWallet).catch(console.error);
-      fetch('/api/wallet/transactions').then(res => res.json()).then(setTransactions).catch(console.error);
+      fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
+      fetch('/api/wallet/transactions').then(responseJson<any[]>).then(setTransactions).catch(console.error);
       
       const fetchPackages = async () => {
         const { createClient } = await import('@/src/lib/supabase/client');
@@ -229,7 +232,7 @@ function AccountPage({active}:{active:string}) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId })
       });
-      const data = await res.json();
+      const data = await responseJson<{ checkoutUrl?: string; error?: string }>(res);
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
