@@ -53,7 +53,9 @@ export async function GET() {
         .limit(8),
       admin
         .from('generation_jobs')
-        .select('id,prompt,status,progress_percent,credit_cost,created_at')
+        .select(
+          'id,prompt,status,progress_percent,credit_cost,created_at,requested_duration_seconds,actual_duration_seconds,frames,fps,output_frames,output_fps',
+        )
         .order('created_at', { ascending: false })
         .limit(8),
     ]);
@@ -149,7 +151,26 @@ export async function GET() {
           available_credits: balancesByUserId.get(user.id)?.available_credits ?? null,
           reserved_credits: balancesByUserId.get(user.id)?.reserved_credits ?? null,
         })),
-        recentJobs: recentJobsResult.data ?? [],
+        recentJobs: (recentJobsResult.data ?? []).map((job) => ({
+          ...job,
+          actual_duration_seconds:
+            job.actual_duration_seconds === null
+              ? null
+              : Number(job.actual_duration_seconds),
+          fps: Number(job.fps ?? 0),
+          frames: Number(job.frames ?? 0),
+          output_fps:
+            job.output_fps === null
+              ? null
+              : Number(job.output_fps),
+          output_frames:
+            job.output_frames === null
+              ? null
+              : Number(job.output_frames),
+          requested_duration_seconds: Number(
+            job.requested_duration_seconds ?? 0,
+          ),
+        })),
       },
       {
         headers: {

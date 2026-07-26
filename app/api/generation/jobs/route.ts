@@ -5,9 +5,9 @@ import { env } from '@/src/lib/env';
 import {
   calculateFrameCount,
   calculateGenerationCost,
-  DURATION_OPTIONS,
-  FPS_OPTIONS,
+  DURATION_OPTION_IDS,
   GENERATION_MODES,
+  getDurationOption,
   getResolution,
   RESOLUTION_OPTIONS,
 } from '@/src/lib/generation-config';
@@ -19,8 +19,7 @@ export const dynamic = 'force-dynamic';
 
 const generationSchema = z.object({
   clientRequestId: z.uuid(),
-  durationSeconds: z.number().int().refine((value) => DURATION_OPTIONS.includes(value as never)),
-  fps: z.number().int().refine((value) => FPS_OPTIONS.includes(value as never)),
+  durationOption: z.enum(DURATION_OPTION_IDS),
   mode: z.enum(GENERATION_MODES),
   negativePrompt: z.string().trim().max(1200).optional(),
   presetId: z.uuid(),
@@ -68,11 +67,24 @@ async function serializeJob(
 
   return {
     ...job,
+    actual_duration_seconds:
+      job.actual_duration_seconds === null ||
+      job.actual_duration_seconds === undefined
+        ? null
+        : Number(job.actual_duration_seconds),
     credit_cost: Number(job.credit_cost ?? 0),
     duration_seconds: Number(job.duration_seconds ?? 0),
     fps: Number(job.fps ?? 0),
     frames: Number(job.frames ?? 0),
     height: Number(job.height ?? 0),
+    output_fps:
+      job.output_fps === null || job.output_fps === undefined
+        ? null
+        : Number(job.output_fps),
+    output_frames:
+      job.output_frames === null || job.output_frames === undefined
+        ? null
+        : Number(job.output_frames),
     progress_percent: Number(job.progress_percent ?? 0),
     runpod_delay_ms:
       job.runpod_delay_ms === null || job.runpod_delay_ms === undefined
@@ -82,6 +94,9 @@ async function serializeJob(
       job.runpod_execution_ms === null || job.runpod_execution_ms === undefined
         ? null
         : Number(job.runpod_execution_ms),
+    requested_duration_seconds: Number(
+      job.requested_duration_seconds ?? job.duration_seconds ?? 0,
+    ),
     seed: job.seed === null || job.seed === undefined ? null : Number(job.seed),
     width: Number(job.width ?? 0),
     output_url: outputUrl,
@@ -96,7 +111,7 @@ export async function GET() {
     const { data: activeJobs, error: activeJobsError } = await admin
       .from('generation_jobs')
       .select(
-        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at',
+        'id,user_id,status,prompt,runpod_job_id,submitted_at,started_at,requested_duration_seconds,frames,fps',
       )
       .eq('user_id', user.id)
       .is('deleted_at', null)
@@ -114,7 +129,7 @@ export async function GET() {
     const { data, error } = await admin
       .from('generation_jobs')
       .select(
-        'id,preset_id,action,title,prompt,negative_prompt,status,progress_percent,credit_cost,source_asset_id,output_storage_path,error_message,created_at,submitted_at,started_at,completed_at,duration_seconds,fps,width,height,frames,seed,aspect_ratio,runpod_delay_ms,runpod_execution_ms,request_snapshot,generation_presets(name,slug)',
+        'id,preset_id,action,title,prompt,negative_prompt,status,progress_percent,credit_cost,source_asset_id,output_storage_path,error_message,created_at,submitted_at,started_at,completed_at,duration_seconds,requested_duration_seconds,actual_duration_seconds,fps,width,height,frames,output_fps,output_frames,seed,aspect_ratio,runpod_delay_ms,runpod_execution_ms,request_snapshot,generation_presets(name,slug)',
       )
       .eq('user_id', user.id)
       .is('deleted_at', null)
@@ -223,15 +238,24 @@ export async function POST(request: NextRequest) {
     }
 
     const resolution = getResolution(input.resolutionKey);
+    const durationOption = getDurationOption(input.durationOption);
+    const presetFps = Number(preset.fps);
     const creditCost = calculateGenerationCost({
       mode: input.mode,
       presetSlug: preset.slug,
       resolutionKey: input.resolutionKey,
-      durationSeconds: input.durationSeconds,
-      fps: input.fps,
+      durationSeconds: durationOption?.seconds ?? 0,
+      fps: presetFps,
     });
 
-    if (!resolution || !creditCost) {
+    if (
+      !resolution ||
+      !durationOption ||
+      !Number.isInteger(presetFps) ||
+      presetFps <= 0 ||
+      presetFps > 60 ||
+      !creditCost
+    ) {
       return NextResponse.json(
         { error: 'The selected generation configuration is unavailable.' },
         { status: 400 },
@@ -292,7 +316,7 @@ export async function POST(request: NextRequest) {
       sourceUrl = signedSource.signedUrl;
     }
 
-    const frames = calculateFrameCount(input.durationSeconds, input.fps);
+    const frames = calculateFrameCount(durationOption.seconds, presetFps);
     const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647);
     const idempotencyKey = `gen-reserve:${input.clientRequestId}`;
     const { data: job, error: jobError } = await admin
@@ -310,8 +334,9 @@ export async function POST(request: NextRequest) {
         client_request_id: input.clientRequestId,
         model: 'ltx-2.3',
         aspect_ratio: resolution.aspectRatio,
-        duration_seconds: input.durationSeconds,
-        fps: input.fps,
+        duration_seconds: durationOption.seconds,
+        requested_duration_seconds: durationOption.seconds,
+        fps: presetFps,
         width: resolution.width,
         height: resolution.height,
         frames,
@@ -328,8 +353,10 @@ export async function POST(request: NextRequest) {
           configuration: {
             resolution_key: input.resolutionKey,
             aspect_ratio: resolution.aspectRatio,
-            duration_seconds: input.durationSeconds,
-            fps: input.fps,
+            duration_option: durationOption.id,
+            duration_seconds: durationOption.seconds,
+            requested_duration_seconds: durationOption.seconds,
+            fps: presetFps,
             width: resolution.width,
             height: resolution.height,
             frames,
@@ -383,11 +410,11 @@ export async function POST(request: NextRequest) {
         mode: input.mode,
         prompt: input.prompt,
         negative_prompt: input.negativePrompt || '',
-        num_frames: frames,
+        frames,
         width: resolution.width,
         height: resolution.height,
-        fps: input.fps,
-        duration_seconds: input.durationSeconds,
+        fps: presetFps,
+        requested_duration_seconds: durationOption.seconds,
         num_inference_steps: Number(preset.inference_steps),
         guidance_scale: Number(preset.guidance_scale),
         seed,
@@ -423,6 +450,9 @@ export async function POST(request: NextRequest) {
           runpod_job_id: runpodResponse.id,
           status: 'processing',
           credit_cost: creditCost,
+          fps: presetFps,
+          frames,
+          requested_duration_seconds: durationOption.seconds,
         },
         { status: 202, headers: { 'Cache-Control': 'no-store' } },
       );

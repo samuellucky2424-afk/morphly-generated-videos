@@ -39,11 +39,17 @@ type RecentUser = {
 };
 
 type RecentJob = {
+  actual_duration_seconds: number | null;
   created_at: string;
   credit_cost: number;
+  fps: number;
+  frames: number;
   id: string;
+  output_fps: number | null;
+  output_frames: number | null;
   progress_percent: number;
   prompt: string;
+  requested_duration_seconds: number;
   status: string;
 };
 
@@ -104,6 +110,12 @@ function formatDate(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function formatSeconds(value: number) {
+  return Number.isInteger(value)
+    ? `${value}s`
+    : `${value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}s`;
 }
 
 function formatRevenue(revenue: RevenueTotal[]) {
@@ -210,7 +222,7 @@ function JobsTable({ jobs }: { jobs: RecentJob[] }) {
         <div className="thead">
           <span>Prompt</span>
           <span>Status</span>
-          <span>Progress</span>
+          <span>Duration</span>
           <span>Credits</span>
           <span>Created</span>
         </div>
@@ -226,7 +238,16 @@ function JobsTable({ jobs }: { jobs: RecentJob[] }) {
               <span>
                 <em>{job.status}</em>
               </span>
-              <span>{job.progress_percent}%</span>
+              <span className="admin-generation-duration">
+                <b>
+                  {job.actual_duration_seconds !== null
+                    ? `${formatSeconds(job.actual_duration_seconds)} actual`
+                    : `${formatSeconds(job.requested_duration_seconds)} requested`}
+                </b>
+                <small>
+                  {job.output_frames ?? job.frames} frames @ {job.output_fps ?? job.fps} fps
+                </small>
+              </span>
               <span>{formatNumber(job.credit_cost)}</span>
               <span>{formatDate(job.created_at)}</span>
             </div>
