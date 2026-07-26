@@ -1,10 +1,13 @@
 # Morphly homepage media
 
-The public homepage intentionally shows labelled asset slots until approved,
-real Morphly output is supplied. Add the following optimized files without
-changing the component code:
+The public homepage uses approved, real Morphly media. The hero background is
+provided by:
 
 - `morphly-hero.mp4`
+
+The remaining labelled asset slots can be filled by adding these optimized
+files without changing the component code:
+
 - `morphly-hero-poster.webp`
 - `morphly-image-motion.mp4`
 - `morphly-image-motion-poster.webp`
