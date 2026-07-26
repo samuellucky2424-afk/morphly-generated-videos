@@ -36,11 +36,15 @@ test("renders Morphly production metadata", async () => {
     /^text\/html\b/i,
   );
   const html = await response.text();
-  assert.match(html, /<title>Morphly — AI video, directed by you<\/title>/i);
   assert.match(
     html,
-    /<meta(?=[^>]*\bname=["']description["'])(?=[^>]*\bcontent=["']Create cinematic AI video from text, images, or footage with Morphly and LTX 2\.3\.["'])[^>]*>/i,
+    /<title>Morphly — AI Video Generation Powered by LTX 2\.3<\/title>/i,
   );
+  assert.match(
+    html,
+    /<meta(?=[^>]*\bname=["']description["'])(?=[^>]*\bcontent=["']Create cinematic videos from text, images and existing footage with Morphly’s LTX 2\.3-powered creative studio\.["'])[^>]*>/i,
+  );
+  assert.match(html, /rel=["']canonical["']/i);
 });
 
 test("admin routes fail closed without a verified administrator session", async () => {

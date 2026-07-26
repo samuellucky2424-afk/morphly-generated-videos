@@ -60,6 +60,21 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Unable to grant user credits:', error);
 
+      if (
+        error.code === 'PGRST202' ||
+        error.code === '42883' ||
+        error.message.toLowerCase().includes('admin_grant_credits')
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Admin credit setup is incomplete. Run Supabase migration 0007_repair_admin_credit_grants.sql, then try again.',
+            code: 'ADMIN_CREDIT_MIGRATION_REQUIRED',
+          },
+          { status: 503, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+
       if (error.code === 'P0002' || error.message.includes('wallet not found')) {
         return NextResponse.json(
           { error: 'This user does not have an initialized wallet yet.' },

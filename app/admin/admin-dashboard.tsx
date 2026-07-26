@@ -443,6 +443,7 @@ export function AdminDashboard({
         }),
       });
       const result = (await response.json()) as {
+        code?: string;
         error?: string;
         grant?: {
           availableCredits: number;
@@ -458,7 +459,11 @@ export function AdminDashboard({
       }
 
       if (!response.ok || !result.grant) {
-        throw new Error(result.error || 'Credits could not be added.');
+        throw new Error(
+          result.code === 'ADMIN_CREDIT_MIGRATION_REQUIRED'
+            ? 'The Supabase admin credit function has not been installed. Run migration 0007_repair_admin_credit_grants.sql in the Supabase SQL Editor, then retry.'
+            : result.error || 'Credits could not be added.',
+        );
       }
 
       replaceUserBalance(
