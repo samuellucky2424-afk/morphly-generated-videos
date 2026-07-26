@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { ArrowRight, Check, KeyRound, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/client';
 
@@ -46,18 +47,18 @@ export function ResetPasswordForm({ email }: { email: string }) {
 
   return (
     <div className="auth-page admin-login-page">
-      <a className="auth-back" href="/admin/login">
+      <Link className="auth-back" href="/admin/login">
         <ArrowRight /> Back to admin sign in
-      </a>
+      </Link>
 
       <section className="auth-brand" aria-label="Morphly password setup">
-        <a className="logo" href="/">
+        <Link className="logo" href="/">
           <span className="logo-mark">
             <Sparkles size={17} />
           </span>
           <span>Morphly</span>
           <em>LTX 2.3</em>
-        </a>
+        </Link>
         <div className="auth-visual">
           <div className="ring r1" />
           <div className="ring r2" />
@@ -79,13 +80,13 @@ export function ResetPasswordForm({ email }: { email: string }) {
       <main className="auth-form-wrap">
         <div className="auth-form">
           <div className="mobile-logo">
-            <a className="logo" href="/">
+            <Link className="logo" href="/">
               <span className="logo-mark">
                 <Sparkles size={17} />
               </span>
               <span>Morphly</span>
               <em>ADMIN</em>
-            </a>
+            </Link>
           </div>
 
           <span className="auth-tag">PASSWORD SETUP</span>

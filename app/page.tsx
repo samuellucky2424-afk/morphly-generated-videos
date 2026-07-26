@@ -4,21 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import {
-  ArrowRight, BarChart3, Bell, Check, ChevronRight, CircleUserRound, Clapperboard,
-  Clock3, CreditCard, Download, Film, Gauge, Image as ImageIcon, Layers3, LayoutDashboard,
-  Menu, MessageSquareText, Moon, Play, Plus, Search, Settings, ShieldCheck, Sparkles,
-  Upload, Users, Video, WandSparkles, X, Zap
+  ArrowRight, Clapperboard, Download, Film, Image as ImageIcon, Menu,
+  MessageSquareText, Play, Sparkles, WandSparkles, X
 } from "lucide-react";
-import { LiveAuth, LiveDashboard } from "./live-app";
+import { DashboardStudio as LiveDashboard } from "./dashboard-studio";
+import { LiveAuth } from "./live-auth";
 
 type View = "home" | "dashboard" | "auth";
-type Mode = "Text to video" | "Image to video" | "Video to video";
-
-const jobs = [
-  { title: "Aurora running shoe", mode: "Image to video", status: "Ready", time: "00:08", tone: "green" },
-  { title: "Neon city launch", mode: "Text to video", status: "Generating 72%", time: "00:06", tone: "yellow" },
-  { title: "Luxury watch macro", mode: "Video to video", status: "Ready", time: "00:10", tone: "purple" },
-];
 
 function Logo() {
   return <button onClick={() => location.hash = ""} className="logo" aria-label="Morphly home">
@@ -109,39 +101,24 @@ function Home({ setView }: { setView: (v: View) => void }) {
     <section className="section projects" id="projects"><div className="section-kicker">Project showcase</div><h2>Made to move<br/>business forward.</h2><div className="project-row"><div><b>+44%</b><span>campaign engagement</span></div><div><b>12 hrs</b><span>from brief to launch</span></div><div><b>−68%</b><span>production cost</span></div><p>“Morphly let our three-person team launch a global-quality campaign before lunch.”<br/><strong>— Amara Obi, Creative Director</strong></p></div></section>
     <section className="section journal" id="blog"><div className="split-title"><div><div className="section-kicker">The motion journal</div><h2>Ideas worth<br/>putting in motion.</h2></div><button className="ghost-btn">View all stories <ArrowRight/></button></div><div className="articles">{["How AI video changes the creative brief","Seven prompts for cinematic product films","LTX 2.3: A practical creative guide"].map((x,i)=><article key={x}><div className={`article-img ai${i}`}><span>0{i+1}</span></div><small>{i===0?"Creative strategy":i===1?"Prompt craft":"Product"} · 6 min</small><h3>{x}</h3><a>Read story <ArrowRight size={14}/></a></article>)}</div></section>
     <section className="cta" id="contact"><div><div className="section-kicker">Your next frame starts here</div><h2>Ready when<br/>your idea is.</h2><p>Start with 50 free credits. No card. No complicated timeline.</p></div><div><button className="lime-btn" onClick={()=>setView("auth")}>Create free account <ArrowRight/></button><button className="ghost-btn">Request a quote</button></div></section>
-  </main><Footer setView={setView}/></>;
+  </main><Footer/></>;
 }
 
-function Footer({setView}:{setView:(v:View)=>void}) { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><a href="/admin/login">Admin</a><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
-
-function Side({active,setActive,admin=false}:{active:string,setActive:(x:string)=>void,admin?:boolean}) {
- const items = admin ? [["Overview",LayoutDashboard],["Users",Users],["Generations",Film],["Billing",CreditCard],["Analytics",BarChart3],["System health",Gauge],["Settings",Settings]] : [["Create",WandSparkles],["My videos",Film],["Assets",Layers3],["Billing",CreditCard],["Settings",Settings]];
- return <aside className="side"><Logo/><div className="side-label">{admin?"CONTROL CENTER":"STUDIO"}</div>{items.map(([x,I]:any)=><button className={active===x?"active":""} onClick={()=>setActive(x)} key={x}><I size={18}/>{x}</button>)}<div className="side-bottom"><div className="mini-user"><span>LS</span><div><b>Lucky Samuel</b><small>{admin?"Super Admin":"Pro creator"}</small></div></div><button onClick={()=>location.reload()}><ArrowRight className="rotate" size={17}/> Back to site</button></div></aside>
-}
-
-function Dashboard({setView}:{setView:(v:View)=>void}) {
- const [active,setActive]=useState("Create"); const [mode,setMode]=useState<Mode>("Text to video"); const [generating,setGenerating]=useState(false);
- return <div className="app-shell"><Side active={active} setActive={setActive}/><div className="app-main"><div className="app-top"><button className="back-mobile" onClick={()=>setView("home")}><X/></button><div><small>MORPHLY STUDIO</small><h1>{active}</h1></div><div className="top-tools"><button><Search/></button><button><Bell/><i/></button><div className="credit-pill"><Zap size={14} fill="currentColor"/><b>1,240</b> credits</div><button className="avatar">LS</button></div></div>
- {active==="Create" ? <div className="workspace"><div className="mode-tabs">{(["Text to video","Image to video","Video to video"] as Mode[]).map(x=><button key={x} onClick={()=>setMode(x)} className={mode===x?"active":""}>{x==="Text to video"?<MessageSquareText/>:x==="Image to video"?<ImageIcon/>:<Video/>}{x}</button>)}</div>
- <div className="creator-grid"><section className="prompt-panel"><div className="panel-head"><h2>{mode}</h2><span>10 credits/sec</span></div>{mode!=="Text to video"&&<label className="dropzone"><Upload/><b>Drop your {mode==="Image to video"?"image":"video"} here</b><span>or browse files · max 200MB</span><input type="file"/></label>}<label className="prompt-label"><span>Describe your scene <small>0 / 1200</small></span><textarea defaultValue={mode==="Text to video"?"A cinematic close-up of a futuristic electric sports car gliding through a rain-soaked neon city at blue hour. Volumetric light, shallow depth of field, slow dolly shot.":""} placeholder="Describe motion, camera, lighting and atmosphere..."/></label><div className="control-grid"><label>Model<select><option>LTX Video 2.3</option><option>LTX Fast</option></select></label><label>Aspect ratio<select><option>16:9 · Landscape</option><option>9:16 · Portrait</option><option>1:1 · Square</option></select></label><label>Duration<select><option>6 seconds</option><option>8 seconds</option><option>10 seconds</option></select></label><label>Quality<select><option>1080p</option><option>720p</option></select></label></div><div className="estimate"><span><Sparkles/> Estimated cost</span><b>60 credits</b></div><button className="generate-btn" onClick={()=>{setGenerating(true);setTimeout(()=>setGenerating(false),3500)}} disabled={generating}>{generating?<><span className="spinner"/> Generating your scene…</>:<><WandSparkles/> Generate video <span>⌘↵</span></>}</button></section>
- <section className="preview-panel"><div className="panel-head"><h2>Preview</h2><span>16:9</span></div><div className="preview-screen"><AnimatePresence mode="wait">{generating?<motion.div key="gen" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="generating"><div className="gen-orbit"><Sparkles/></div><b>Composing your frames</b><span>72% · About 14 seconds left</span><div><i/></div></motion.div>:<motion.div key="empty" initial={{opacity:0}} animate={{opacity:1}} className="empty-preview"><div className="scene-mini"/><button><Play fill="currentColor"/></button><span>Your latest preview</span></motion.div>}</AnimatePresence></div><div className="preview-actions"><button><Download/> Export</button><button><Plus/> New variation</button></div></section></div>
- <div className="recent-head"><div><h2>Recent generations</h2><p>Your latest projects and renders.</p></div><button>View all <ChevronRight/></button></div><div className="job-grid">{jobs.map((j,i)=><article key={j.title}><div className={`job-thumb jt${i}`}><Play fill="currentColor"/></div><div><h3>{j.title}</h3><p>{j.mode} · {j.time}</p><span className={j.tone}>{j.status}</span></div><button>•••</button></article>)}</div></div> : <AccountPage active={active}/>}</div></div>
-}
-
-function AccountPage({active}:{active:string}) {
- if(active==="Billing") return <div className="content-page"><div className="stat-grid"><article><span>Credit balance</span><b>1,240</b><small>≈ 124 seconds of video</small></article><article><span>Current plan</span><b>Creator Pro</b><small>Renews Aug 26, 2026</small></article><article><span>This month</span><b>680</b><small>credits used</small></article></div><div className="wide-card"><div><h2>Creator Pro</h2><p>5,000 credits monthly · Priority queue · 1080p output</p></div><button className="lime-btn">Manage plan</button></div><h2>Billing history</h2><div className="table">{["Jul 26, 2026|Creator Pro|$90.00|Paid","Jun 26, 2026|Creator Pro|$90.00|Paid","May 18, 2026|Credit top-up|$18.00|Paid"].map(x=><div key={x}>{x.split("|").map(y=><span key={y}>{y}</span>)}<button><Download size={15}/></button></div>)}</div></div>;
- if(active==="Settings") return <div className="content-page settings-page"><div className="wide-card profile-card"><span className="big-avatar">LS</span><div><h2>Lucky Samuel</h2><p>lucky@morphly.studio</p></div><button>Change photo</button></div><div className="form-card"><h2>Profile information</h2><div className="control-grid"><label>Full name<input defaultValue="Lucky Samuel"/></label><label>Display name<input defaultValue="Lucky"/></label><label>Email address<input defaultValue="lucky@morphly.studio"/></label><label>Company<input defaultValue="Morphly Labs"/></label></div><button className="lime-btn">Save changes</button></div></div>;
- return <div className="content-page"><div className="empty-state"><div><Film/></div><h2>{active}</h2><p>{active==="My videos"?"Every render, version and export—organized in one place.":"Upload and manage reusable images, clips and brand assets."}</p><button className="lime-btn"><Plus/> Add new</button></div></div>;
-}
-
-function Auth({setView}:{setView:(v:View)=>void}) {
- const [signup,setSignup]=useState(true); const [done,setDone]=useState(false);
- return <div className="auth-page"><button className="auth-back" onClick={()=>setView("home")}><ArrowRight/> Back to home</button><div className="auth-brand"><Logo/><div className="auth-visual"><div className="ring r1"/><div className="ring r2"/><div className="auth-spark"><Sparkles/></div></div><div><span>MAKE THE IMPOSSIBLE VISIBLE</span><h1>Every frame begins<br/>with an idea.</h1><p>Bring yours to life with LTX 2.3—faster than the thought that started it.</p></div></div><div className="auth-form-wrap"><div className="auth-form"><div className="mobile-logo"><Logo/></div>{done?<div className="success"><div><Check/></div><h2>Welcome to Morphly.</h2><p>Your workspace is ready with 50 free credits.</p><button className="lime-btn" onClick={()=>setView("dashboard")}>Open your studio <ArrowRight/></button></div>:<><span className="auth-tag">{signup?"START CREATING":"WELCOME BACK"}</span><h2>{signup?"Create your account":"Sign in to Morphly"}</h2><p>{signup?"50 free credits. No credit card required.":"Continue creating where you left off."}</p><button className="google-btn"><span>G</span> Continue with Google</button><div className="or"><span>or continue with email</span></div><form onSubmit={e=>{e.preventDefault();setDone(true)}}>{signup&&<label>Full name<input required placeholder="Lucky Samuel"/></label>}<label>Email address<input type="email" required placeholder="you@company.com"/></label><label>Password<input type="password" required minLength={8} placeholder="At least 8 characters"/></label>{signup&&<label>Referral code <small>Optional</small><input placeholder="MORPHLY-2026"/></label>}<button className="lime-btn" type="submit">{signup?"Create free account":"Sign in"} <ArrowRight/></button></form><p className="switch">{signup?"Already have an account?":"New to Morphly?"} <button onClick={()=>setSignup(!signup)}>{signup?"Sign in":"Create account"}</button></p><small className="legal">By continuing, you agree to Morphly’s Terms of Service and Privacy Policy.</small></>}</div></div></div>;
-}
+function Footer() { return <footer><Logo/><p>AI video, directed by you.</p><div><a href="#services">Services</a><a href="#gallery">Gallery</a><a href="#blog">Journal</a><a href="/admin/login">Admin</a><a href="#contact">Contact</a></div><span>© 2026 Morphly. Built for motion.</span></footer> }
 
 export default function HomePage() {
  const [view,setView]=useState<View>("home");
- useEffect(()=>{if(new URLSearchParams(location.search).get("auth")==="signup"){setView("auth")}},[]);
+ useEffect(()=>{
+   const params=new URLSearchParams(location.search);
+   const requestedView: View =
+     params.get("auth")==="signup"||params.get("view")==="auth"
+       ? "auth"
+       : params.get("view")==="dashboard"
+         ? "dashboard"
+         : "home";
+   const timer=window.setTimeout(()=>setView(requestedView),0);
+   return ()=>window.clearTimeout(timer);
+ },[]);
  useEffect(()=>{scrollTo(0,0)},[view]);
  return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
 }

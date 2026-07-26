@@ -1,11 +1,14 @@
 import { env } from './env';
 
 interface RunPodInput {
+  mode: 'text_to_video' | 'image_to_video' | 'video_to_video';
   prompt: string;
   negative_prompt?: string;
   num_frames: number;
   width: number;
   height: number;
+  fps: number;
+  duration_seconds: number;
   num_inference_steps: number;
   guidance_scale: number;
   seed?: number;
@@ -35,6 +38,10 @@ export async function submitRunPodJob(jobId: string, input: RunPodInput): Promis
     body: JSON.stringify({
       input,
       webhook: webhookUrl,
+      policy: {
+        executionTimeout: 900000,
+        ttl: 3600000,
+      },
     }),
   });
 
@@ -45,5 +52,24 @@ export async function submitRunPodJob(jobId: string, input: RunPodInput): Promis
   }
 
   const data = await response.json() as RunPodJobResponse;
-  return data; // contains id (runpod_job_id) and status
+  if (!data.id || typeof data.id !== 'string') {
+    throw new Error('RunPod did not return a job identifier');
+  }
+  return data;
+}
+
+export async function cancelRunPodJob(runpodJobId: string) {
+  const response = await fetch(
+    `https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/cancel/${encodeURIComponent(runpodJobId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RUNPOD_API_KEY}`,
+      },
+    },
+  );
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error('RunPod job cancellation failed');
+  }
 }
