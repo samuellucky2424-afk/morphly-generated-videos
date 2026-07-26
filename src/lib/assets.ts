@@ -14,6 +14,30 @@ const IMAGE_LIMIT_BYTES = 15 * 1024 * 1024;
 const AVATAR_LIMIT_BYTES = 5 * 1024 * 1024;
 const VIDEO_LIMIT_BYTES = 200 * 1024 * 1024;
 
+const MIME_TYPE_BY_EXTENSION: Record<string, keyof typeof ALLOWED_MIME_TYPES> = {
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  mov: 'video/quicktime',
+  mp4: 'video/mp4',
+  png: 'image/png',
+  webm: 'video/webm',
+  webp: 'image/webp',
+};
+
+export function normalizeAssetMimeType(fileName: string, mimeType: string) {
+  const normalized =
+    mimeType.toLowerCase() === 'image/jpg'
+      ? 'image/jpeg'
+      : mimeType.toLowerCase();
+
+  if (normalized in ALLOWED_MIME_TYPES) {
+    return normalized;
+  }
+
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+  return MIME_TYPE_BY_EXTENSION[extension] ?? normalized;
+}
+
 export function sanitizeOriginalName(value: string) {
   const cleaned = value
     .normalize('NFKC')
