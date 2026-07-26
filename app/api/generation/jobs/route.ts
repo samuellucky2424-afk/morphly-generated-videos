@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/src/lib/auth';
-import { createClient } from '@/src/lib/supabase/server';
+import { createAdminClient } from '@/src/lib/supabase/admin';
 import { submitRunPodJob } from '@/src/lib/runpod';
 
 export async function GET() {
   try {
     const user = await requireUser();
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     
     // Fetch user jobs ordered by newest
     const { data, error } = await supabase
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'presetId and prompt are required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // 1. Fetch Preset
     const { data: preset, error: presetError } = await supabase

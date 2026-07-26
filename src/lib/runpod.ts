@@ -22,7 +22,9 @@ export async function submitRunPodJob(jobId: string, input: RunPodInput): Promis
   const url = `https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`;
   
   // Use our App URL for the webhook
-  const webhookUrl = `${env.APP_URL}/api/webhooks/runpod?jobId=${jobId}`;
+  const webhookUrl =
+    `${env.APP_URL}/api/webhooks/runpod?jobId=${jobId}` +
+    `&secret=${encodeURIComponent(env.RUNPOD_WEBHOOK_SECRET)}`;
   
   const response = await fetch(url, {
     method: 'POST',

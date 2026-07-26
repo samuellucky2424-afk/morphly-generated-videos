@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { env } from '@/src/lib/env';
 import { verifyTransaction } from '@/src/lib/flutterwave';
-import { createClient } from '@/src/lib/supabase/server';
+import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
         status?: string;
       };
     };
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Log the event securely
     await supabase.from('payment_events').insert({

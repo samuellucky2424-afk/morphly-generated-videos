@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/src/lib/supabase/server'
+import { createAdminClient } from '@/src/lib/supabase/admin'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -18,7 +19,8 @@ export async function GET(request: Request) {
       
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.rpc('bootstrap_new_user', {
+        const admin = createAdminClient();
+        await admin.rpc('bootstrap_new_user', {
           p_user_id: user.id,
           p_email: user.email,
           p_display_name: user.user_metadata?.full_name || 'User',
