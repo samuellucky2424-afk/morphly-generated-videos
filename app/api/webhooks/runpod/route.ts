@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/src/lib/supabase/server';
+import { createAdminClient } from '@/src/lib/supabase/admin';
 import { env } from '@/src/lib/env';
 
 export async function POST(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
+    const secret = searchParams.get('secret');
 
-    if (!jobId) {
-      return new NextResponse('Missing jobId', { status: 400 });
+    if (!jobId || !secret) {
+      return new NextResponse('Missing webhook credentials', { status: 400 });
     }
 
-    // Verify webhook secret from RunPod (you can pass it as a query param or header)
-    // RunPod doesn't have native webhook signatures like Stripe, so a secret query param is often used.
-    // For now, we will trust the jobId UUID acting as a capability URL, but ideally verify a token.
+    if (secret !== env.RUNPOD_WEBHOOK_SECRET) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
 
     const payload = await request.json() as {
       status: string;
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       delayTime?: number;
       error?: string;
     };
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     
     // Log event
     await supabase.from('generation_events').insert({

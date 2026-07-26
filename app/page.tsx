@@ -9,6 +9,7 @@ import {
   Menu, MessageSquareText, Moon, Play, Plus, Search, Settings, ShieldCheck, Sparkles,
   Upload, Users, Video, WandSparkles, X, Zap
 } from "lucide-react";
+import { LiveAuth, LiveDashboard } from "./live-app";
 
 type View = "home" | "dashboard" | "admin" | "auth";
 type Mode = "Text to video" | "Image to video" | "Video to video";
@@ -18,10 +19,6 @@ const jobs = [
   { title: "Neon city launch", mode: "Text to video", status: "Generating 72%", time: "00:06", tone: "yellow" },
   { title: "Luxury watch macro", mode: "Video to video", status: "Ready", time: "00:10", tone: "purple" },
 ];
-
-async function responseJson<T>(response: Response): Promise<T> {
-  return response.json() as Promise<T>;
-}
 
 function Logo() {
   return <button onClick={() => location.hash = ""} className="logo" aria-label="Morphly home">
@@ -59,15 +56,15 @@ function Hero({ setView }: { setView: (v: View) => void }) {
   }, []);
   return <section className="hero" id="home" ref={hero}>
     <div className="orb orb-one"/><div className="orb orb-two"/><div className="hero-grid"/>
-    <div className="relative z-10 text-center flex flex-col items-center">
-      <div className="inline-flex items-center gap-2 px-3 py-2 border border-[#dfff4530] rounded-full bg-[#dfff4508] text-[#dfff45] text-[11px] tracking-[0.18em] uppercase font-extrabold mb-8"><span className="w-1.5 h-1.5 rounded-full bg-[#dfff45] shadow-[0_0_12px_#dfff45]"></span> Built on LTX 2.3 · Faster. Sharper. Cinematic.</div>
-      <h1 className="text-5xl md:text-7xl lg:text-[112px] tracking-tighter leading-[0.9] my-6">Your idea.<br/><span className="text-white/70">Now in motion.</span></h1>
+    <div className="hero-copy">
+      <div className="eyebrow"><span/> Built on LTX 2.3 · Faster. Sharper. Cinematic.</div>
+      <h1>Your idea.<br/><span>Now in motion.</span></h1>
       <p>Turn a sentence, image, or rough clip into production-ready AI video—without a studio, timeline, or learning curve.</p>
       <div className="hero-actions">
         <button className="lime-btn" onClick={() => setView("dashboard")}><WandSparkles size={18}/> Generate your first video</button>
         <button className="ghost-btn" onClick={() => document.getElementById("showreel")?.scrollIntoView({behavior:"smooth"})}><Play size={16} fill="currentColor"/> Watch showreel</button>
       </div>
-      <div className="flex items-center justify-center gap-4 text-[#8f9890] text-xs leading-relaxed mt-10"><div className="flex items-center mr-2"><i className="w-7 h-7 rounded-full grid place-items-center bg-[#dfff45] text-black border-2 border-[#0a0d0b] text-[8px] font-bold not-italic z-30">AM</i><i className="w-7 h-7 rounded-full grid place-items-center bg-[#293029] border-2 border-[#0a0d0b] text-[8px] font-bold not-italic -ml-2 z-20">LK</i><i className="w-7 h-7 rounded-full grid place-items-center bg-[#293029] border-2 border-[#0a0d0b] text-[8px] font-bold not-italic -ml-2 z-10">JR</i><i className="w-7 h-7 rounded-full grid place-items-center bg-[#293029] border-2 border-[#0a0d0b] text-[8px] font-bold not-italic -ml-2 z-0">+2k</i></div><span><b className="text-white">4.9/5</b> from creative teams<br/>No card required · 50 free credits</span></div>
+      <div className="proof"><div className="avatars"><i>AM</i><i>LK</i><i>JR</i><i>+2k</i></div><span><b>4.9/5</b> from creative teams<br/>No card required · 50 free credits</span></div>
     </div>
     <div className="hero-stage" aria-label="AI video creation preview">
       <div className="stage-top"><span><i/> LIVE COMPOSITION</span><span>16:9 · 1080P</span></div>
@@ -89,27 +86,19 @@ function Home({ setView }: { setView: (v: View) => void }) {
   return <><Nav setView={setView}/><main>
     <Hero setView={setView}/>
     <section className="ticker" aria-label="Capabilities"><div>TEXT TO VIDEO <Sparkles/> IMAGE TO VIDEO <Sparkles/> VIDEO RESTYLE <Sparkles/> PRODUCT ADS <Sparkles/> CINEMATIC STORIES <Sparkles/> TEXT TO VIDEO</div></section>
-    <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto text-center" id="about">
-      <div className="text-[#dfff45] text-[11px] tracking-[0.18em] uppercase font-extrabold mb-4">The creative engine</div>
-      <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight leading-tight m-0 mb-14">From thought to film<br/><span className="text-white/70">in three moves.</span></h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 text-left border-t border-[#ffffff20]">
-        {[["01","Describe it","Write what you see in your head. Set the mood, camera, pace and style."],["02","Direct it","Add a reference image or clip. Fine-tune movement with cinematic controls."],["03","Ship it","Generate, upscale and export. Ready for ads, campaigns, socials and stories."]].map((s,i)=><motion.article key={s[0]} initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.12}} className="p-8 relative border-b md:border-b-0 md:border-r border-[#ffffff20] last:border-0">
-          <span className="text-[#515a52] font-mono">{s[0]}</span><div className="my-10 w-14 h-14 grid place-items-center rounded-2xl bg-[#dfff450c] border border-[#dfff452b] text-[#dfff45]">{i===0?<MessageSquareText/>:i===1?<Clapperboard/>:<Download/>}</div><h3 className="text-2xl font-semibold mb-3">{s[1]}</h3><p className="text-[#8d968e] leading-relaxed m-0">{s[2]}</p>
+    <section className="section story" id="about">
+      <div className="section-kicker">The creative engine</div><h2>From thought to film<br/><span>in three moves.</span></h2>
+      <div className="steps">
+        {[["01","Describe it","Write what you see in your head. Set the mood, camera, pace and style."],["02","Direct it","Add a reference image or clip. Fine-tune movement with cinematic controls."],["03","Ship it","Generate, upscale and export. Ready for ads, campaigns, socials and stories."]].map((s,i)=><motion.article key={s[0]} initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.12}}>
+          <span>{s[0]}</span><div className="step-icon">{i===0?<MessageSquareText/>:i===1?<Clapperboard/>:<Download/>}</div><h3>{s[1]}</h3><p>{s[2]}</p>
         </motion.article>)}
       </div>
     </section>
-    <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto" id="services">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-        <div>
-          <div className="text-[#dfff45] text-[11px] tracking-[0.18em] uppercase font-extrabold mb-4">One studio. Every format.</div>
-          <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight leading-tight m-0">Build exactly<br/>what you imagined.</h2>
-        </div>
-        <p className="max-w-[430px] text-[#8d968e] leading-relaxed m-0">Advanced generation modes with simple controls—designed for marketers, filmmakers, agencies and ambitious brands.</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[["Text to video","Write a scene. Morphly handles composition, movement and light.","01",<MessageSquareText key="a"/>],["Image to video","Give still images natural motion without losing character or detail.","02",<ImageIcon key="b"/>],["Video to video","Transform footage into a new style while preserving its original movement.","03",<Film key="c"/>]].map((x,i)=><motion.article key={String(x[0])} whileHover={{y:-8}} className={`bg-[#0d120f] border rounded-2xl p-4 pb-6 transition-all duration-300 ${i===1?'border-[#dfff4547]':'border-[#ffffff20]'}`}>
-          <div className="h-[250px] rounded-xl bg-[#151a17] relative overflow-hidden grid place-items-center mb-6"><div className="opacity-70 text-[#dfff45] [&>svg]:w-[70px] [&>svg]:h-[70px]">{x[3]}</div><span className="absolute right-4 top-4 font-mono text-[10px] text-[#737c74]">{x[2]}</span></div>
-          <h3 className="text-2xl font-semibold mb-3 px-3">{x[0]}</h3><p className="text-[#8d968e] leading-relaxed px-3 mb-4">{x[1]}</p><button className="border-none bg-transparent text-[#dfff45] flex gap-2 text-xs font-extrabold px-3" onClick={()=>setView("dashboard")}>Open studio <ArrowRight size={15}/></button>
+    <section className="section studio-section" id="services">
+      <div className="split-title"><div><div className="section-kicker">One studio. Every format.</div><h2>Build exactly<br/>what you imagined.</h2></div><p>Advanced generation modes with simple controls—designed for marketers, filmmakers, agencies and ambitious brands.</p></div>
+      <div className="services">
+        {[["Text to video","Write a scene. Morphly handles composition, movement and light.","01",<MessageSquareText key="a"/>],["Image to video","Give still images natural motion without losing character or detail.","02",<ImageIcon key="b"/>],["Video to video","Transform footage into a new style while preserving its original movement.","03",<Film key="c"/>]].map((x,i)=><motion.article key={String(x[0])} whileHover={{y:-8}} className={i===1?"featured":""}>
+          <div className={`service-art art-${i}`}>{x[3]}<div className="scan"/><span>{x[2]}</span></div><h3>{x[0]}</h3><p>{x[1]}</p><button onClick={()=>setView("dashboard")}>Open studio <ArrowRight size={15}/></button>
         </motion.article>)}
       </div>
     </section>
@@ -119,17 +108,7 @@ function Home({ setView }: { setView: (v: View) => void }) {
     </section>
     <section className="section projects" id="projects"><div className="section-kicker">Project showcase</div><h2>Made to move<br/>business forward.</h2><div className="project-row"><div><b>+44%</b><span>campaign engagement</span></div><div><b>12 hrs</b><span>from brief to launch</span></div><div><b>−68%</b><span>production cost</span></div><p>“Morphly let our three-person team launch a global-quality campaign before lunch.”<br/><strong>— Amara Obi, Creative Director</strong></p></div></section>
     <section className="section journal" id="blog"><div className="split-title"><div><div className="section-kicker">The motion journal</div><h2>Ideas worth<br/>putting in motion.</h2></div><button className="ghost-btn">View all stories <ArrowRight/></button></div><div className="articles">{["How AI video changes the creative brief","Seven prompts for cinematic product films","LTX 2.3: A practical creative guide"].map((x,i)=><article key={x}><div className={`article-img ai${i}`}><span>0{i+1}</span></div><small>{i===0?"Creative strategy":i===1?"Prompt craft":"Product"} · 6 min</small><h3>{x}</h3><a>Read story <ArrowRight size={14}/></a></article>)}</div></section>
-    <section className="mx-auto mt-20 max-w-7xl p-12 md:p-24 bg-gradient-to-br from-[#141b15] to-[#1d2814] border-t border-[#dfff4530] flex flex-col md:flex-row items-center md:items-end justify-between gap-10" id="contact">
-      <div>
-        <div className="text-[#dfff45] text-[11px] tracking-[0.18em] uppercase font-extrabold mb-4">Your next frame starts here</div>
-        <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight leading-tight m-0 mb-5">Ready when your idea is.</h2>
-        <p className="text-[#909991] m-0">Start with 50 free credits. No card. No complicated timeline.</p>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button className="lime-btn" onClick={()=>setView("auth")}>Create free account <ArrowRight/></button>
-        <button className="ghost-btn">Request a quote</button>
-      </div>
-    </section>
+    <section className="cta" id="contact"><div><div className="section-kicker">Your next frame starts here</div><h2>Ready when<br/>your idea is.</h2><p>Start with 50 free credits. No card. No complicated timeline.</p></div><div><button className="lime-btn" onClick={()=>setView("auth")}>Create free account <ArrowRight/></button><button className="ghost-btn">Request a quote</button></div></section>
   </main><Footer setView={setView}/></>;
 }
 
@@ -141,150 +120,18 @@ function Side({active,setActive,admin=false}:{active:string,setActive:(x:string)
 }
 
 function Dashboard({setView}:{setView:(v:View)=>void}) {
-  const [active,setActive]=useState("Create"); 
-  const [mode,setMode]=useState<Mode>("Text to video"); 
-  const [generating,setGenerating]=useState(false);
-  
-  const [wallet, setWallet] = useState<any>(null);
-  const [presets, setPresets] = useState<any[]>([]);
-  const [activePreset, setActivePreset] = useState<any>(null);
-  const [jobsList, setJobsList] = useState<any[]>([]);
-  const [prompt, setPrompt] = useState("A cinematic close-up of a futuristic electric sports car gliding through a rain-soaked neon city at blue hour. Volumetric light, shallow depth of field, slow dolly shot.");
-
-  useEffect(() => {
-    fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
-    fetch('/api/generation/presets').then(responseJson<any[]>).then(data => {
-      setPresets(data);
-      if (data && data.length > 0) setActivePreset(data[0]);
-    }).catch(console.error);
-    fetch('/api/generation/jobs').then(responseJson<any[]>).then(setJobsList).catch(console.error);
-  }, [active]);
-
-  async function handleGenerate() {
-    if (!activePreset || !prompt) return;
-    setGenerating(true);
-    try {
-      const res = await fetch('/api/generation/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ presetId: activePreset.id, prompt })
-      });
-      const data = await responseJson<{ error?: string }>(res);
-      if (data.error) {
-        alert(data.error);
-      } else {
-        // Optimistically add job
-        setJobsList([{ title: "New Generation", mode: activePreset.action, status: "processing", tone: "yellow", created_at: new Date() }, ...jobsList]);
-        // Re-fetch wallet since credits were reserved
-        fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
-      }
-    } catch(e) {
-      console.error(e);
-      alert('Generation request failed.');
-    }
-    // Simulate generation completion for UI demo
-    setTimeout(() => {
-      setGenerating(false);
-      fetch('/api/generation/jobs').then(responseJson<any[]>).then(setJobsList).catch(console.error);
-    }, 4000);
-  }
-
-  return <div className="app-shell"><Side active={active} setActive={setActive}/><div className="app-main"><div className="app-top"><button className="back-mobile" onClick={()=>setView("home")}><X/></button><div><small>MORPHLY STUDIO</small><h1>{active}</h1></div><div className="top-tools"><button><Search/></button><button><Bell/><i/></button><div className="credit-pill"><Zap size={14} fill="currentColor"/><b>{wallet ? wallet.available_credits.toLocaleString() : '...'}</b> credits</div><button className="avatar">LS</button></div></div>
-  {active==="Create" ? <div className="workspace"><div className="mode-tabs">{(["Text to video","Image to video","Video to video"] as Mode[]).map(x=><button key={x} onClick={()=>setMode(x)} className={mode===x?"active":""}>{x==="Text to video"?<MessageSquareText/>:x==="Image to video"?<ImageIcon/>:<Video/>}{x}</button>)}</div>
-  <div className="creator-grid"><section className="prompt-panel"><div className="panel-head"><h2>{mode}</h2><span>10 credits/sec</span></div>{mode!=="Text to video"&&<label className="dropzone"><Upload/><b>Drop your {mode==="Image to video"?"image":"video"} here</b><span>or browse files · max 200MB</span><input type="file"/></label>}<label className="prompt-label"><span>Describe your scene <small>{prompt.length} / 1200</small></span><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Describe motion, camera, lighting and atmosphere..."/></label><div className="control-grid"><label>Preset<select value={activePreset?.id || ""} onChange={e => setActivePreset(presets.find(p=>p.id===e.target.value))}>
-    {presets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.width}x{p.height})</option>)}
-  </select></label><label>Duration<select disabled><option>{activePreset ? Math.floor(activePreset.frames / activePreset.fps) : 0} seconds</option></select></label><label>FPS<select disabled><option>{activePreset?.fps} fps</option></select></label></div><div className="estimate"><span><Sparkles/> Estimated cost</span><b>{activePreset ? activePreset.credit_cost : 0} credits</b></div><button className="generate-btn" onClick={handleGenerate} disabled={generating || !activePreset}>{generating?<><span className="spinner"/> Processing with RunPod…</>:<><WandSparkles/> Generate video <span>⌘↵</span></>}</button></section>
-  <section className="preview-panel"><div className="panel-head"><h2>Preview</h2><span>16:9</span></div><div className="preview-screen"><AnimatePresence mode="wait">{generating?<motion.div key="gen" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="generating"><div className="gen-orbit"><Sparkles/></div><b>Running on LTX Serverless</b><span>Awaiting webhook response...</span><div><i/></div></motion.div>:<motion.div key="empty" initial={{opacity:0}} animate={{opacity:1}} className="empty-preview"><div className="scene-mini"/><button><Play fill="currentColor"/></button><span>Your latest preview</span></motion.div>}</AnimatePresence></div><div className="preview-actions"><button><Download/> Export</button><button><Plus/> New variation</button></div></section></div>
-  <div className="recent-head"><div><h2>Recent generations</h2><p>Your latest projects and renders.</p></div><button>View all <ChevronRight/></button></div><div className="job-grid">
-    {jobsList.map((j,i)=><article key={j.id || i}><div className={`job-thumb jt${i%3}`}>
-      {j.output_storage_path ? <video src={j.output_storage_path} autoPlay loop muted className="w-full h-full object-cover" /> : <Play fill="currentColor"/>}
-    </div><div><h3>{j.prompt ? j.prompt.slice(0, 20) + '...' : (j.title || 'Generation')}</h3><p>{j.generation_presets?.name || j.mode} · {j.status}</p><span className={j.status === 'completed' ? 'green' : 'yellow'}>{j.status}</span></div><button>•••</button></article>)}
-    {jobsList.length === 0 && <p className="text-gray-500 col-span-3">No jobs found.</p>}
-  </div></div> : <AccountPage active={active}/>}</div></div>
+ const [active,setActive]=useState("Create"); const [mode,setMode]=useState<Mode>("Text to video"); const [generating,setGenerating]=useState(false);
+ return <div className="app-shell"><Side active={active} setActive={setActive}/><div className="app-main"><div className="app-top"><button className="back-mobile" onClick={()=>setView("home")}><X/></button><div><small>MORPHLY STUDIO</small><h1>{active}</h1></div><div className="top-tools"><button><Search/></button><button><Bell/><i/></button><div className="credit-pill"><Zap size={14} fill="currentColor"/><b>1,240</b> credits</div><button className="avatar">LS</button></div></div>
+ {active==="Create" ? <div className="workspace"><div className="mode-tabs">{(["Text to video","Image to video","Video to video"] as Mode[]).map(x=><button key={x} onClick={()=>setMode(x)} className={mode===x?"active":""}>{x==="Text to video"?<MessageSquareText/>:x==="Image to video"?<ImageIcon/>:<Video/>}{x}</button>)}</div>
+ <div className="creator-grid"><section className="prompt-panel"><div className="panel-head"><h2>{mode}</h2><span>10 credits/sec</span></div>{mode!=="Text to video"&&<label className="dropzone"><Upload/><b>Drop your {mode==="Image to video"?"image":"video"} here</b><span>or browse files · max 200MB</span><input type="file"/></label>}<label className="prompt-label"><span>Describe your scene <small>0 / 1200</small></span><textarea defaultValue={mode==="Text to video"?"A cinematic close-up of a futuristic electric sports car gliding through a rain-soaked neon city at blue hour. Volumetric light, shallow depth of field, slow dolly shot.":""} placeholder="Describe motion, camera, lighting and atmosphere..."/></label><div className="control-grid"><label>Model<select><option>LTX Video 2.3</option><option>LTX Fast</option></select></label><label>Aspect ratio<select><option>16:9 · Landscape</option><option>9:16 · Portrait</option><option>1:1 · Square</option></select></label><label>Duration<select><option>6 seconds</option><option>8 seconds</option><option>10 seconds</option></select></label><label>Quality<select><option>1080p</option><option>720p</option></select></label></div><div className="estimate"><span><Sparkles/> Estimated cost</span><b>60 credits</b></div><button className="generate-btn" onClick={()=>{setGenerating(true);setTimeout(()=>setGenerating(false),3500)}} disabled={generating}>{generating?<><span className="spinner"/> Generating your scene…</>:<><WandSparkles/> Generate video <span>⌘↵</span></>}</button></section>
+ <section className="preview-panel"><div className="panel-head"><h2>Preview</h2><span>16:9</span></div><div className="preview-screen"><AnimatePresence mode="wait">{generating?<motion.div key="gen" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="generating"><div className="gen-orbit"><Sparkles/></div><b>Composing your frames</b><span>72% · About 14 seconds left</span><div><i/></div></motion.div>:<motion.div key="empty" initial={{opacity:0}} animate={{opacity:1}} className="empty-preview"><div className="scene-mini"/><button><Play fill="currentColor"/></button><span>Your latest preview</span></motion.div>}</AnimatePresence></div><div className="preview-actions"><button><Download/> Export</button><button><Plus/> New variation</button></div></section></div>
+ <div className="recent-head"><div><h2>Recent generations</h2><p>Your latest projects and renders.</p></div><button>View all <ChevronRight/></button></div><div className="job-grid">{jobs.map((j,i)=><article key={j.title}><div className={`job-thumb jt${i}`}><Play fill="currentColor"/></div><div><h3>{j.title}</h3><p>{j.mode} · {j.time}</p><span className={j.tone}>{j.status}</span></div><button>•••</button></article>)}</div></div> : <AccountPage active={active}/>}</div></div>
 }
 
 function AccountPage({active}:{active:string}) {
-  const [wallet, setWallet] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (active === "Billing") {
-      fetch('/api/wallet').then(responseJson<any>).then(setWallet).catch(console.error);
-      fetch('/api/wallet/transactions').then(responseJson<any[]>).then(setTransactions).catch(console.error);
-      
-      const fetchPackages = async () => {
-        const { createClient } = await import('@/src/lib/supabase/client');
-        const supabase = createClient();
-        const { data } = await supabase.from('credit_packages').select('*').eq('is_active', true).order('sort_order');
-        if (data) setPackages(data);
-      };
-      fetchPackages();
-    }
-  }, [active]);
-
-  async function handleCheckout(packageId: string) {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId })
-      });
-      const data = await responseJson<{ checkoutUrl?: string; error?: string }>(res);
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      } else {
-        alert(data.error || 'Checkout failed');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Checkout error');
-    }
-    setLoading(false);
-  }
-
-  if(active==="Billing") return <div className="content-page">
-    <div className="stat-grid">
-      <article><span>Available credits</span><b>{wallet ? wallet.available_credits.toLocaleString() : '...'}</b><small>Reserved: {wallet?.reserved_credits}</small></article>
-      <article><span>Lifetime purchased</span><b>{wallet ? wallet.lifetime_purchased.toLocaleString() : '...'}</b><small>Morphly account</small></article>
-      <article><span>Lifetime spent</span><b>{wallet ? wallet.lifetime_spent.toLocaleString() : '...'}</b><small>credits used</small></article>
-    </div>
-    
-    <h2>Buy Credits</h2>
-    <div className="grid grid-cols-2 gap-4 mb-12">
-      {packages.map(pkg => (
-        <div key={pkg.id} className="wide-card !flex-col !items-start gap-4">
-          <div>
-            <h2>{pkg.name}</h2>
-            <p>{pkg.description}</p>
-            <p className="mt-2 text-lime-400 font-bold">{pkg.base_credits.toLocaleString()} Credits {pkg.bonus_credits > 0 && `+ ${pkg.bonus_credits} Bonus`}</p>
-            <p className="text-white">{(pkg.price_minor / 100).toLocaleString()} {pkg.currency}</p>
-          </div>
-          <button className="lime-btn w-full" onClick={() => handleCheckout(pkg.id)} disabled={loading}>Buy Now</button>
-        </div>
-      ))}
-    </div>
-    
-    <h2>Billing history</h2>
-    <div className="table">
-      {transactions.length === 0 && <p className="text-gray-500 text-sm p-4">No transactions yet.</p>}
-      {transactions.map(tx => (
-        <div key={tx.id}>
-          <span>{new Date(tx.created_at).toLocaleDateString()}</span>
-          <span>{tx.transaction_type}</span>
-          <span className={tx.credit_delta > 0 ? "text-lime-400" : "text-red-400"}>
-            {tx.credit_delta > 0 ? '+' : ''}{tx.credit_delta}
-          </span>
-          <span>{tx.description}</span>
-        </div>
-      ))}
-    </div>
-  </div>;
-
-  if(active==="Settings") return <div className="content-page settings-page"><div className="wide-card profile-card"><span className="big-avatar">LS</span><div><h2>Lucky Samuel</h2><p>lucky@morphly.studio</p></div><button>Change photo</button></div><div className="form-card"><h2>Profile information</h2><div className="control-grid"><label>Full name<input defaultValue="Lucky Samuel"/></label><label>Display name<input defaultValue="Lucky"/></label><label>Email address<input defaultValue="lucky@morphly.studio"/></label><label>Company<input defaultValue="Morphly Labs"/></label></div><button className="lime-btn">Save changes</button></div></div>;
-  return <div className="content-page"><div className="empty-state"><div><Film/></div><h2>{active}</h2><p>{active==="My videos"?"Every render, version and export—organized in one place.":"Upload and manage reusable images, clips and brand assets."}</p><button className="lime-btn"><Plus/> Add new</button></div></div>;
+ if(active==="Billing") return <div className="content-page"><div className="stat-grid"><article><span>Credit balance</span><b>1,240</b><small>≈ 124 seconds of video</small></article><article><span>Current plan</span><b>Creator Pro</b><small>Renews Aug 26, 2026</small></article><article><span>This month</span><b>680</b><small>credits used</small></article></div><div className="wide-card"><div><h2>Creator Pro</h2><p>5,000 credits monthly · Priority queue · 1080p output</p></div><button className="lime-btn">Manage plan</button></div><h2>Billing history</h2><div className="table">{["Jul 26, 2026|Creator Pro|$90.00|Paid","Jun 26, 2026|Creator Pro|$90.00|Paid","May 18, 2026|Credit top-up|$18.00|Paid"].map(x=><div key={x}>{x.split("|").map(y=><span key={y}>{y}</span>)}<button><Download size={15}/></button></div>)}</div></div>;
+ if(active==="Settings") return <div className="content-page settings-page"><div className="wide-card profile-card"><span className="big-avatar">LS</span><div><h2>Lucky Samuel</h2><p>lucky@morphly.studio</p></div><button>Change photo</button></div><div className="form-card"><h2>Profile information</h2><div className="control-grid"><label>Full name<input defaultValue="Lucky Samuel"/></label><label>Display name<input defaultValue="Lucky"/></label><label>Email address<input defaultValue="lucky@morphly.studio"/></label><label>Company<input defaultValue="Morphly Labs"/></label></div><button className="lime-btn">Save changes</button></div></div>;
+ return <div className="content-page"><div className="empty-state"><div><Film/></div><h2>{active}</h2><p>{active==="My videos"?"Every render, version and export—organized in one place.":"Upload and manage reusable images, clips and brand assets."}</p><button className="lime-btn"><Plus/> Add new</button></div></div>;
 }
 
 function Admin({setView}:{setView:(v:View)=>void}) {
@@ -296,56 +143,13 @@ function Admin({setView}:{setView:(v:View)=>void}) {
  <div className="users-card"><div className="card-title"><div><h2>Recent users</h2><p>Newest accounts across the platform</p></div><button>Manage users <ArrowRight/></button></div><div className="user-table"><div className="thead"><span>User</span><span>Plan</span><span>Credits</span><span>Status</span><span>Joined</span></div>{[["AO","Amara Obi","Creator Pro","4,620","Active","Today"],["DK","David Kim","Starter","42","Low credits","Today"],["NS","Nora Smith","Agency","18,400","Active","Yesterday"],["JM","Jay Mensah","Free","50","Trial","Yesterday"]].map(u=><div className="trow" key={u[1]}><span><i>{u[0]}</i><b>{u[1]}</b></span><span>{u[2]}</span><span>{u[3]}</span><span><em>{u[4]}</em></span><span>{u[5]}</span></div>)}</div></div></div></div></div>;
 }
 
-import { createClient } from '@/src/lib/supabase/client';
-
 function Auth({setView}:{setView:(v:View)=>void}) {
- const [signup,setSignup]=useState(true); 
- const [done,setDone]=useState(false);
- const [loading,setLoading]=useState(false);
- const [errorMsg, setErrorMsg]=useState("");
- 
- async function handleSubmit(e: any) {
-   e.preventDefault();
-   setLoading(true);
-   setErrorMsg("");
-   const supabase = createClient();
-   const email = e.target.email.value;
-   const password = e.target.password.value;
-   const fullName = signup ? e.target.fullname.value : "";
-   const refCode = signup ? e.target.refcode.value : "";
-
-   if (signup) {
-     const { data, error } = await supabase.auth.signUp({
-       email,
-       password,
-       options: {
-         data: { full_name: fullName, referral_code_used: refCode },
-         emailRedirectTo: `${window.location.origin}/api/auth/callback`
-       }
-     });
-     if (error) { setErrorMsg(error.message); setLoading(false); return; }
-     setDone(true); // show check email
-   } else {
-     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-     if (error) { setErrorMsg(error.message); setLoading(false); return; }
-     setView("dashboard");
-   }
-   setLoading(false);
- }
-
- async function handleGoogle() {
-   const supabase = createClient();
-   await supabase.auth.signInWithOAuth({
-     provider: 'google',
-     options: { redirectTo: `${window.location.origin}/api/auth/callback` }
-   });
- }
-
- return <div className="auth-page"><button className="auth-back" onClick={()=>setView("home")}><ArrowRight/> Back to home</button><div className="auth-brand"><Logo/><div className="auth-visual"><div className="ring r1"/><div className="ring r2"/><div className="auth-spark"><Sparkles/></div></div><div><span>MAKE THE IMPOSSIBLE VISIBLE</span><h1>Every frame begins<br/>with an idea.</h1><p>Bring yours to life with LTX 2.3—faster than the thought that started it.</p></div></div><div className="auth-form-wrap"><div className="auth-form"><div className="mobile-logo"><Logo/></div>{done?<div className="success"><div><Check/></div><h2>Check your email.</h2><p>We sent a verification link to your email. Click it to verify your account.</p><button className="lime-btn" onClick={()=>setDone(false)}>Back to sign in <ArrowRight/></button></div>:<><span className="auth-tag">{signup?"START CREATING":"WELCOME BACK"}</span><h2>{signup?"Create your account":"Sign in to Morphly"}</h2><p>{signup?"50 free credits. No credit card required.":"Continue creating where you left off."}</p><button type="button" className="google-btn" onClick={handleGoogle}><span>G</span> Continue with Google</button><div className="or"><span>or continue with email</span></div><form onSubmit={handleSubmit}>{signup&&<label>Full name<input name="fullname" required placeholder="Lucky Samuel"/></label>}<label>Email address<input name="email" type="email" required placeholder="you@company.com"/></label><label>Password<input name="password" type="password" required minLength={8} placeholder="At least 8 characters"/></label>{signup&&<label>Referral code <small>Optional</small><input name="refcode" placeholder="MORPHLY-2026"/></label>}{errorMsg && <p className="text-red-400 text-xs mb-4">{errorMsg}</p>}<button className="lime-btn" type="submit" disabled={loading}>{loading ? "Loading..." : signup?"Create free account":"Sign in"} <ArrowRight/></button></form><p className="switch">{signup?"Already have an account?":"New to Morphly?"} <button onClick={()=>{setSignup(!signup);setErrorMsg("");}}>{signup?"Sign in":"Create account"}</button></p><small className="legal">By continuing, you agree to Morphly’s Terms of Service and Privacy Policy.</small></>}</div></div></div>;
+ const [signup,setSignup]=useState(true); const [done,setDone]=useState(false);
+ return <div className="auth-page"><button className="auth-back" onClick={()=>setView("home")}><ArrowRight/> Back to home</button><div className="auth-brand"><Logo/><div className="auth-visual"><div className="ring r1"/><div className="ring r2"/><div className="auth-spark"><Sparkles/></div></div><div><span>MAKE THE IMPOSSIBLE VISIBLE</span><h1>Every frame begins<br/>with an idea.</h1><p>Bring yours to life with LTX 2.3—faster than the thought that started it.</p></div></div><div className="auth-form-wrap"><div className="auth-form"><div className="mobile-logo"><Logo/></div>{done?<div className="success"><div><Check/></div><h2>Welcome to Morphly.</h2><p>Your workspace is ready with 50 free credits.</p><button className="lime-btn" onClick={()=>setView("dashboard")}>Open your studio <ArrowRight/></button></div>:<><span className="auth-tag">{signup?"START CREATING":"WELCOME BACK"}</span><h2>{signup?"Create your account":"Sign in to Morphly"}</h2><p>{signup?"50 free credits. No credit card required.":"Continue creating where you left off."}</p><button className="google-btn"><span>G</span> Continue with Google</button><div className="or"><span>or continue with email</span></div><form onSubmit={e=>{e.preventDefault();setDone(true)}}>{signup&&<label>Full name<input required placeholder="Lucky Samuel"/></label>}<label>Email address<input type="email" required placeholder="you@company.com"/></label><label>Password<input type="password" required minLength={8} placeholder="At least 8 characters"/></label>{signup&&<label>Referral code <small>Optional</small><input placeholder="MORPHLY-2026"/></label>}<button className="lime-btn" type="submit">{signup?"Create free account":"Sign in"} <ArrowRight/></button></form><p className="switch">{signup?"Already have an account?":"New to Morphly?"} <button onClick={()=>setSignup(!signup)}>{signup?"Sign in":"Create account"}</button></p><small className="legal">By continuing, you agree to Morphly’s Terms of Service and Privacy Policy.</small></>}</div></div></div>;
 }
 
 export default function HomePage() {
  const [view,setView]=useState<View>("home");
  useEffect(()=>{scrollTo(0,0)},[view]);
- return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<Dashboard setView={setView}/>:view==="admin"?<Admin setView={setView}/>:<Auth setView={setView}/>}</motion.div></AnimatePresence>;
+ return <AnimatePresence mode="wait"><motion.div key={view} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.25}}>{view==="home"?<Home setView={setView}/>:view==="dashboard"?<LiveDashboard setView={setView}/>:view==="admin"?<Admin setView={setView}/>:<LiveAuth setView={setView}/>}</motion.div></AnimatePresence>;
 }
