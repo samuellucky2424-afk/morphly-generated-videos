@@ -84,21 +84,24 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
           <p className="text-[var(--text)]/60">Concept to video in one step, with various resource plans available.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className={`grid gap-6 ${packages.length === 4 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
           {packages.length > 0 ? packages.map((pkg, i) => {
-            const isPopular = pkg.price_cents === 2500 || i === 1; // Highlight middle/25$ plan
+            const price = pkg.price_minor ?? pkg.price_cents ?? 0;
+            const credits = (pkg.base_credits || 0) + (pkg.bonus_credits || 0) || pkg.credits || 0;
+            const symbol = pkg.currency === 'NGN' ? '₦' : '$';
+            const isPopular = i === 1; // Highlight middle plan
             return (
               <div key={pkg.id} className={`bg-[var(--panel)] ${isPopular ? 'border-[var(--lime)]/30 shadow-2xl z-10 md:-translate-y-4' : 'border-[var(--text)]/5 opacity-90'} border rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col relative`}>
                 {isPopular && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--lime)] text-[var(--bg)] text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Most Popular</div>
                 )}
                 <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
-                <div className="text-3xl font-bold mb-6">${(pkg.price_cents / 100).toFixed(2)} <span className="text-sm font-normal text-[var(--text)]/50">/ {pkg.credits} Credits</span></div>
+                <div className="text-3xl font-bold mb-6">{symbol}{(price / 100).toFixed(2)} <span className="text-sm font-normal text-[var(--text)]/50">/ {credits} Credits</span></div>
                 <button onClick={onCreate} className={`w-full py-3 rounded-lg ${isPopular ? 'bg-[var(--text)] text-[var(--bg)]' : 'border border-[var(--text)]/20 hover:bg-[var(--text)]/5'} transition-all font-medium mb-8`}>Get Plan</button>
                 <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
                   <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate high quality videos</li>
                   <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Advanced LTX 2.3 integration</li>
-                  <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> {pkg.credits > 1000 ? 'Priority' : 'Standard'} processing queue</li>
+                  <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> {credits > 1000 ? 'Priority' : 'Standard'} processing queue</li>
                 </ul>
               </div>
             );
