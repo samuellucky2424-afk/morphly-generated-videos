@@ -30,16 +30,16 @@ export const THEME_PRESETS = {
 };
 
 export const defaultTheme: ThemeConfig = {
-  mode: 'dark',
-  accent: 'lime',
-  ...THEME_PRESETS.modes.dark,
-  lime: THEME_PRESETS.accents.lime.primary,
-  yellow: THEME_PRESETS.accents.lime.secondary,
+  mode: 'light',
+  accent: 'red',
+  ...THEME_PRESETS.modes.light,
+  lime: THEME_PRESETS.accents.red.primary,
+  yellow: THEME_PRESETS.accents.red.secondary,
 };
 
 export function computeTheme(mode?: ThemeMode, accent?: AccentColor): ThemeConfig {
-  const selectedMode = mode && THEME_PRESETS.modes[mode] ? mode : 'dark';
-  const selectedAccent = accent && THEME_PRESETS.accents[accent] ? accent : 'lime';
+  const selectedMode = mode && THEME_PRESETS.modes[mode] ? mode : 'light';
+  const selectedAccent = accent && THEME_PRESETS.accents[accent] ? accent : 'red';
   
   return {
     mode: selectedMode,
