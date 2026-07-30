@@ -1,473 +1,218 @@
 "use client";
 
-import {
-  ArrowRight,
-  Check,
-  Film,
-  Image as ImageIcon,
-  Menu,
-  MessageSquareText,
-  Play,
-  Settings2,
-  Sparkles,
-  Video,
-  X,
-} from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { Sparkles, ArrowRight, Video, Play, Box, Zap, Settings, Volume2, ShieldCheck, ChevronRight, Check } from "lucide-react";
+import { createClient } from "@/src/lib/supabase/client";
 import { DashboardStudio as LiveDashboard } from "./dashboard-studio";
 import { LiveAuth } from "./live-auth";
-import { createClient } from "@/src/lib/supabase/client";
 
+// Types and generic structures
 type View = "home" | "dashboard" | "auth";
 type DashboardSection = "create" | "videos" | "assets" | "billing";
 
-type VideoSpec = {
-  available?: boolean;
-  duration: string;
-  mode: string;
-  poster?: string;
-  prompt: string;
-  resolution: string;
-  src: string;
-  title: string;
-};
-
-const HERO_VIDEO: VideoSpec = {
-  duration: "8 seconds",
-  mode: "Text to video",
-  prompt:
-    "A graphite performance coupe moves through a rain-soaked city at blue hour, controlled dolly shot, natural reflections.",
-  resolution: "1024 × 576",
-  src: "/media/morphly-hero.mp4",
-  title: "Blue-hour motion study",
-};
-
-const GALLERY_VIDEOS: VideoSpec[] = [
-  HERO_VIDEO,
-  {
-    available: false,
-    duration: "5 seconds",
-    mode: "Image to video",
-    poster: "/media/morphly-image-motion-poster.webp",
-    prompt: "Subtle portrait motion with a slow camera push and preserved facial detail.",
-    resolution: "576 × 1024",
-    src: "/media/morphly-image-motion.mp4",
-    title: "Portrait motion test",
-  },
-  {
-    available: false,
-    duration: "8 seconds",
-    mode: "Video to video",
-    poster: "/media/morphly-video-transform-poster.webp",
-    prompt: "Restyle the source footage with restrained cinematic color and stable movement.",
-    resolution: "768 × 448",
-    src: "/media/morphly-video-transform.mp4",
-    title: "Footage transformation",
-  },
-  {
-    available: false,
-    duration: "3 seconds",
-    mode: "Text to video",
-    poster: "/media/morphly-product-study-poster.webp",
-    prompt: "Minimal product turntable, soft directional light, clean dark studio.",
-    resolution: "512 × 512",
-    src: "/media/morphly-product-study.mp4",
-    title: "Product study",
-  },
-];
-
-const MODE_ROWS = [
-  {
-    action: "Start with a prompt",
-    description:
-      "Describe the subject, motion, camera, lighting, and atmosphere. Morphly turns the direction into a new video.",
-    icon: MessageSquareText,
-    input: "Text direction",
-    mode: "Text to video",
-    output: "A generated video",
-  },
-  {
-    action: "Animate an image",
-    description:
-      "Upload a source image, select it from your asset library, and direct the movement without changing modes.",
-    icon: ImageIcon,
-    input: "JPG, PNG, or WebP",
-    mode: "Image to video",
-    output: "A motion sequence",
-  },
-  {
-    action: "Transform a clip",
-    description:
-      "Upload existing footage and provide a new visual direction while preserving the source movement.",
-    icon: Video,
-    input: "MP4, MOV, or WebM",
-    mode: "Video to video",
-    output: "A transformed video",
-  },
-];
-
-function Brand() {
+// New Home Component
+function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => void }) {
   return (
-    <a aria-label="Morphly home" className="mkt-brand" href="#top">
-      <span>
-        <Sparkles />
-      </span>
-      <b>Morphly</b>
-      <em>LTX 2.3</em>
-    </a>
-  );
-}
-
-function MarketingHeader({
-  onCreate,
-  onSignIn,
-}: {
-  onCreate: () => void;
-  onSignIn: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  function close() {
-    setOpen(false);
-  }
-
-  return (
-    <header className="mkt-header">
-      <nav aria-label="Primary navigation" className="mkt-nav">
-        <Brand />
-        <div className={`mkt-nav-links ${open ? "open" : ""}`}>
-          <a href="#product" onClick={close}>Product</a>
-          <a href="#gallery" onClick={close}>Gallery</a>
-          <a href="#pricing" onClick={close}>Pricing</a>
-          <a href="#how-it-works" onClick={close}>How it works</a>
-        </div>
-        <div className="mkt-nav-actions">
-          <button className="mkt-sign-in" onClick={onSignIn} type="button">
-            Sign in
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] selection:bg-[var(--lime)] selection:text-[var(--bg)] overflow-x-hidden font-sans">
+      
+      {/* Header Navigation */}
+      <header className="fixed top-0 w-full z-50 bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--text)]/5">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <button onClick={() => window.scrollTo(0, 0)} className="flex items-center gap-2 text-xl font-bold tracking-tight hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-lg bg-[var(--lime)] text-[var(--bg)] flex items-center justify-center">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            Morphly <span className="text-[10px] uppercase tracking-widest text-[var(--lime)] border border-[var(--lime)]/30 px-2 py-0.5 rounded-full ml-1 font-mono">LTX 2.3</span>
           </button>
-          <button className="mkt-primary compact" onClick={onCreate} type="button">
-            Create video <ArrowRight />
-          </button>
-          <button
-            aria-expanded={open}
-            aria-label={open ? "Close navigation" : "Open navigation"}
-            className="mkt-menu"
-            onClick={() => setOpen((current) => !current)}
-            type="button"
-          >
-            {open ? <X /> : <Menu />}
-          </button>
-        </div>
-      </nav>
-    </header>
-  );
-}
-
-function AssetSlot({
-  children,
-  filename,
-}: {
-  children?: ReactNode;
-  filename: string;
-}) {
-  return (
-    <div className="mkt-asset-slot">
-      {children ?? <Film />}
-      <b>Product media slot</b>
-      <span>Add a real Morphly output at</span>
-      <code>{filename}</code>
-    </div>
-  );
-}
-
-function HeroBackgroundVideo() {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return null;
-  }
-
-  return (
-    <div aria-hidden="true" className="mkt-hero-media">
-      <video
-        autoPlay
-        loop
-        muted
-        onCanPlay={(event) => {
-          event.currentTarget.muted = true;
-          void event.currentTarget.play().catch(() => undefined);
-        }}
-        onError={() => setFailed(true)}
-        playsInline
-        preload="auto"
-        tabIndex={-1}
-      >
-        <source src={HERO_VIDEO.src} type="video/mp4" />
-      </video>
-    </div>
-  );
-}
-
-function ProductVideo({
-  compact = false,
-  video,
-}: {
-  compact?: boolean;
-  video: VideoSpec;
-}) {
-  const [failed, setFailed] = useState(false);
-
-  return (
-    <article className={`mkt-video ${compact ? "compact" : ""}`}>
-      <div className="mkt-video-frame">
-        {video.available === false ? (
-          <AssetSlot filename={`public${video.src}`} />
-        ) : failed ? (
-          <AssetSlot filename={`public${video.src}`} />
-        ) : (
-          <video
-            aria-label={`${video.title}, ${video.mode}`}
-            controls
-            muted
-            onError={() => setFailed(true)}
-            playsInline
-            poster={video.poster}
-            preload={compact ? "none" : "metadata"}
-          >
-            <source src={video.src} type="video/mp4" />
-            Your browser does not support embedded video.
-          </video>
-        )}
-      </div>
-      <div className="mkt-video-caption">
-        <div>
-          <h3>{video.title}</h3>
-          <p>{video.prompt}</p>
-        </div>
-        <dl>
-          <div><dt>Mode</dt><dd>{video.mode}</dd></div>
-          <div><dt>Length</dt><dd>{video.duration}</dd></div>
-          <div><dt>Output</dt><dd>{video.resolution}</dd></div>
-        </dl>
-      </div>
-    </article>
-  );
-}
-
-function DashboardEvidence() {
-  return (
-    <div className="mkt-dashboard-evidence">
-      <AssetSlot filename="public/media/morphly-dashboard.webp">
-        <Settings2 />
-      </AssetSlot>
-    </div>
-  );
-}
-
-function MarketingFooter({
-  onCreate,
-}: {
-  onCreate: (section?: DashboardSection) => void;
-}) {
-  return (
-    <footer className="mkt-footer">
-      <div>
-        <Brand />
-        <p>A focused LTX 2.3-powered studio for creating video from text and media.</p>
-      </div>
-      <nav aria-label="Footer navigation">
-        <a href="#product">Product</a>
-        <a href="#gallery">Gallery</a>
-        <button onClick={() => onCreate("billing")} type="button">Pricing</button>
-        <a href="/terms">Terms</a>
-        <a href="/privacy">Privacy</a>
-        <a href="mailto:samuellucky2424@gmail.com">Contact</a>
-      </nav>
-      <small>© 2026 Morphly. AI video, directed by you.</small>
-    </footer>
-  );
-}
-
-function Home({
-  onCreate,
-  onSignIn,
-}: {
-  onCreate: (section?: DashboardSection) => void;
-  onSignIn: () => void;
-}) {
-  return (
-    <div className="marketing-site" id="top">
-      <MarketingHeader
-        onCreate={() => onCreate("create")}
-        onSignIn={onSignIn}
-      />
-      <main>
-        <section className="mkt-hero" id="product">
-          <HeroBackgroundVideo />
-          <div className="mkt-hero-inner">
-            <motion.div
-              className="mkt-hero-copy"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45 }}
-            >
-              <span className="mkt-kicker">AI video generation · LTX 2.3</span>
-              <h1>Create cinematic video from a prompt, image, or clip.</h1>
-              <p>
-                Morphly brings text-to-video, image-to-video and video transformation
-                into one focused creative studio powered by LTX 2.3.
-              </p>
-              <div className="mkt-actions">
-                <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
-                  Create your first video <ArrowRight />
-                </button>
-                <button className="mkt-secondary" onClick={() => onCreate("videos")} type="button">
-                  <Play /> View generated videos
-                </button>
-              </div>
-              <small>Start with 50 free credits. No card required.</small>
-            </motion.div>
-          </div>
-        </section>
-
-        <section className="mkt-proof-strip" aria-label="Current product workflow">
-          <span>Prompt or media input</span>
-          <ArrowRight />
-          <span>Format and motion controls</span>
-          <ArrowRight />
-          <span>Generated video output</span>
-        </section>
-
-        <section className="mkt-section mkt-gallery-section" id="gallery">
-          <div className="mkt-section-heading">
-            <span className="mkt-kicker">Generated output</span>
-            <h2>Judge the product by the frames it produces.</h2>
-            <p>
-              This gallery is wired for real Morphly-generated files. Until approved
-              showcase media is supplied, every missing asset is labelled with its
-              required filename.
-            </p>
-          </div>
-          <div className="mkt-gallery">
-            {GALLERY_VIDEOS.map((video, index) => (
-              <ProductVideo compact={index !== 0} key={video.src} video={video} />
-            ))}
-          </div>
-        </section>
-
-        <section className="mkt-section mkt-modes-section">
-          <div className="mkt-section-heading narrow">
-            <span className="mkt-kicker">Three creation modes</span>
-            <h2>Use the source material you already have.</h2>
-          </div>
-          <div className="mkt-mode-list">
-            {MODE_ROWS.map(({ action, description, icon: Icon, input, mode, output }) => (
-              <article key={mode}>
-                <div className="mkt-mode-number"><Icon /></div>
-                <div>
-                  <span>{mode}</span>
-                  <h3>{action}</h3>
-                  <p>{description}</p>
-                </div>
-                <dl>
-                  <div><dt>You provide</dt><dd>{input}</dd></div>
-                  <div><dt>Morphly produces</dt><dd>{output}</dd></div>
-                </dl>
-                <button onClick={() => onCreate("create")} type="button">
-                  Open studio <ArrowRight />
-                </button>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mkt-section mkt-workflow" id="how-it-works">
-          <div className="mkt-workflow-copy">
-            <span className="mkt-kicker">How Morphly works</span>
-            <h2>One clear path from direction to output.</h2>
-            <ol>
-              <li>
-                <span>01</span>
-                <div><h3>Add your prompt or media</h3><p>Write the scene or upload an image or video source.</p></div>
-              </li>
-              <li>
-                <span>02</span>
-                <div><h3>Choose format and motion settings</h3><p>Select preset, resolution, duration, frame rate, and optional advanced controls.</p></div>
-              </li>
-              <li>
-                <span>03</span>
-                <div><h3>Generate, review and export</h3><p>Track progress, review the completed output, and download the generated file.</p></div>
-              </li>
-            </ol>
-          </div>
-          <DashboardEvidence />
-        </section>
-
-        <section className="mkt-section mkt-capabilities">
-          <div className="mkt-section-heading narrow">
-            <span className="mkt-kicker">Available now</span>
-            <h2>Controls that match the operating studio.</h2>
-          </div>
-          <div className="mkt-capability-grid">
-            {[
-              ["Modes", "Text to video, image to video, and video to video"],
-              ["Aspect ratios", "1:1, 16:9, and 9:16"],
-              ["Output sizes", "512 × 512 through 1024 × 576 or 576 × 1024"],
-              ["Durations", "4, 8, or 10 seconds"],
-              ["Frame rate", "Preset-controlled 8 fps"],
-              ["Credits", "Calculated before generation from the selected configuration"],
-              ["Source formats", "JPG, PNG, WebP, MP4, MOV, and WebM"],
-              ["Output", "Review in the studio and export the completed video"],
-            ].map(([label, value]) => (
-              <article key={label}>
-                <Check />
-                <span>{label}</span>
-                <p>{value}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mkt-section mkt-pricing" id="pricing">
-          <div>
-            <span className="mkt-kicker">Usage-based credits</span>
-            <h2>See the cost before you generate.</h2>
-          </div>
-          <div>
-            <p>
-              Morphly calculates credits from the mode, duration, frame rate,
-              resolution, and preset you select. Your available and reserved balances
-              remain visible in the studio.
-            </p>
-            <button className="mkt-secondary" onClick={() => onCreate("billing")} type="button">
-              View credit options <ArrowRight />
-            </button>
-          </div>
-        </section>
-
-        <section className="mkt-final-cta">
-          <div>
-            <span className="mkt-kicker">Start creating</span>
-            <h2>Direct the next frame.</h2>
-            <p>Open Morphly Studio and turn a prompt, image, or clip into video.</p>
-          </div>
-          <div className="mkt-actions">
-            <button className="mkt-primary" onClick={() => onCreate("create")} type="button">
-              Create video <ArrowRight />
-            </button>
-            <button className="mkt-secondary" onClick={onSignIn} type="button">
+          
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--text)]/70">
+            <a href="#product" className="hover:text-[var(--text)] transition-colors">Product</a>
+            <a href="#pricing" className="hover:text-[var(--text)] transition-colors">Pricing</a>
+            <a href="#features" className="hover:text-[var(--text)] transition-colors">Features</a>
+          </nav>
+          
+          <div className="flex items-center gap-4">
+            <button onClick={onSignIn} className="text-sm font-medium text-[var(--text)]/70 hover:text-[var(--text)] transition-colors">
               Sign in
             </button>
+            <button onClick={onCreate} className="text-sm font-medium px-4 py-2 rounded-lg bg-[var(--text)]/5 border border-[var(--text)]/10 hover:bg-[var(--text)]/10 transition-colors">
+              Sign up
+            </button>
           </div>
-        </section>
-      </main>
-      <MarketingFooter onCreate={onCreate} />
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-6 max-w-5xl mx-auto text-center flex flex-col items-center mt-10">
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
+          Professional AI Video <br/> in One Click
+        </h1>
+        <p className="text-lg text-[var(--text)]/60 max-w-2xl mb-10 leading-relaxed">
+          Endless Possibilities. Morphly LTX 2.3 provides a state-of-the-art multimodal video generation model directly to your browser.
+        </p>
+        <button onClick={onCreate} className="px-8 py-4 rounded-xl bg-[var(--lime)] text-[var(--bg)] font-bold text-lg hover:brightness-110 hover:scale-[1.02] transition-all flex items-center gap-2">
+          Get Started Now <ArrowRight className="w-5 h-5" />
+        </button>
+
+        {/* Hero Media Container (Glassmorphism) */}
+        <div className="mt-20 w-full aspect-video max-w-4xl bg-[var(--panel)]/50 border border-[var(--text)]/5 rounded-2xl overflow-hidden relative group backdrop-blur-sm p-2 shadow-2xl">
+           <div className="w-full h-full rounded-xl overflow-hidden relative bg-[var(--panel2)]">
+             <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-80 mix-blend-lighten" />
+             <div className="absolute inset-0 bg-gradient-to-t from-[var(--panel2)] via-transparent to-transparent opacity-80"></div>
+             
+             {/* Floating Audio Toggle mockup */}
+             <div className="absolute right-6 bottom-6 w-10 h-10 rounded-full bg-[var(--panel)]/60 backdrop-blur flex items-center justify-center border border-[var(--text)]/10 text-[var(--text)] cursor-pointer hover:bg-[var(--panel)] transition-colors">
+               <Volume2 className="w-4 h-4" />
+             </div>
+           </div>
+        </div>
+      </section>
+
+      {/* Pricing / Plans Section */}
+      <section id="pricing" className="py-24 px-6 max-w-7xl mx-auto border-t border-[var(--text)]/5">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Morphly Credits & Plans</h2>
+          <p className="text-[var(--text)]/60">Concept to video in one step, with various resource plans available.</p>
+        </div>
+
+        {/* Tab Mockup */}
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex p-1 bg-[var(--panel)]/80 backdrop-blur rounded-xl border border-[var(--text)]/5">
+            <button className="px-6 py-2 rounded-lg bg-[var(--text)] text-[var(--bg)] font-medium text-sm shadow">Morphly 2.3</button>
+            <button className="px-6 py-2 rounded-lg text-[var(--text)]/70 hover:text-[var(--text)] font-medium text-sm transition-colors">Morphly Mini</button>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Card 1 */}
+          <div className="bg-[var(--panel)]/40 border border-[var(--text)]/5 rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col">
+            <h3 className="text-xl font-bold mb-2">Starter</h3>
+            <div className="text-3xl font-bold mb-6">$10 <span className="text-sm font-normal text-[var(--text)]/50">/ 500 Credits</span></div>
+            <button onClick={onCreate} className="w-full py-3 rounded-lg border border-[var(--text)]/20 hover:bg-[var(--text)]/5 transition-colors font-medium mb-8">Get Plan</button>
+            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 50 x 720P videos</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> 4-8 second durations</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Standard processing queue</li>
+            </ul>
+          </div>
+
+          {/* Card 2 - Most Popular */}
+          <div className="bg-[var(--panel)] border border-[var(--lime)]/30 rounded-2xl p-8 backdrop-blur relative shadow-2xl flex flex-col transform md:-translate-y-4 z-10">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--lime)] text-[var(--bg)] text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Most Popular</div>
+            <h3 className="text-xl font-bold mb-2">Creator</h3>
+            <div className="text-3xl font-bold mb-6">$25 <span className="text-sm font-normal text-[var(--text)]/50">/ 1500 Credits</span></div>
+            <button onClick={onCreate} className="w-full py-3 rounded-lg bg-[var(--text)] text-[var(--bg)] hover:opacity-90 transition-opacity font-medium mb-8">Get Plan</button>
+            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 150 x 1080P videos</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Up to 10 second durations (25 FPS)</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Priority processing queue</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Access to Prompt Enhancer</li>
+            </ul>
+          </div>
+
+          {/* Card 3 */}
+          <div className="bg-[var(--panel)]/40 border border-[var(--text)]/5 rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col">
+            <h3 className="text-xl font-bold mb-2">Pro</h3>
+            <div className="text-3xl font-bold mb-6">$60 <span className="text-sm font-normal text-[var(--text)]/50">/ 4000 Credits</span></div>
+            <button onClick={onCreate} className="w-full py-3 rounded-lg border border-[var(--text)]/20 hover:bg-[var(--text)]/5 transition-colors font-medium mb-8">Get Plan</button>
+            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 400 x 1080P videos</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Highest priority processing</li>
+              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> 24/7 Support</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section id="features" className="py-24 px-6 max-w-7xl mx-auto border-t border-[var(--text)]/5">
+        <div className="mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Next-generation Video Generation Model</h2>
+          <p className="text-[var(--text)]/60 max-w-2xl">Multimodal references and intelligent video editing elevate video AI to a new level of precision and consistency.</p>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-4">
+          {[
+            { icon: Box, title: "Multimodality", desc: "Combination of images, text, and structure." },
+            { icon: Sparkles, title: "Intelligence", desc: "Native LTX 2.3 integration and precise rendering." },
+            { icon: ShieldCheck, title: "Fidelity", desc: "Physics-compliant and superior motion quality." },
+            { icon: Zap, title: "Intuitive", desc: "Powerful intent understanding and Gemini prompt enhancement." }
+          ].map((feature, i) => (
+            <div key={i} className="group bg-[var(--panel)]/30 border border-[var(--text)]/5 rounded-2xl p-6 hover:bg-[var(--panel)]/60 transition-colors relative overflow-hidden">
+              <feature.icon className="w-8 h-8 text-[var(--lime)] mb-6" />
+              <h3 className="text-lg font-bold mb-3">{feature.title}</h3>
+              <p className="text-sm text-[var(--text)]/60 mb-8">{feature.desc}</p>
+              
+              <a href="#try" onClick={(e) => { e.preventDefault(); onCreate(); }} className="absolute bottom-6 left-6 text-sm font-medium text-[var(--text)]/50 group-hover:text-[var(--lime)] transition-colors flex items-center gap-1">
+                Try Now <ChevronRight className="w-4 h-4 opacity-0 -ml-2 group-hover:ml-0 group-hover:opacity-100 transition-all" />
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-24 px-6 max-w-5xl mx-auto border-t border-[var(--text)]/5">
+        <h2 className="text-3xl font-bold mb-12">FAQs</h2>
+        <div className="grid md:grid-cols-2 gap-8">
+          {[
+            { q: "What is Morphly LTX 2.3?", a: "Morphly LTX 2.3 is a next-generation multimodal video generation model that allows professional-grade AI video generation from text and images." },
+            { q: "How does the pricing work?", a: "Generations consume credits. Different resolutions, frame rates, and durations cost varying amounts of credits. You purchase credit packages that never expire." },
+            { q: "Can I use the prompt enhancer?", a: "Yes! Our Gemini-powered prompt enhancer automatically optimizes your short prompts into detailed, highly descriptive 10-second scene directions." },
+            { q: "What are the maximum specs?", a: "We support up to 1080p generation, at a native 25 FPS, for up to 10 seconds of high-fidelity video." },
+          ].map((faq, i) => (
+            <div key={i} className="p-6 border border-[var(--text)]/5 rounded-2xl bg-[var(--panel)]/20 hover:bg-[var(--panel)]/40 transition-colors">
+              <h4 className="font-bold mb-3 text-[var(--text)]">{faq.q}</h4>
+              <p className="text-sm text-[var(--text)]/60 leading-relaxed">{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--text)]/5 bg-[var(--panel2)]/30 mt-12 py-16 px-6">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-12 text-sm">
+          <div className="col-span-2">
+            <div className="flex items-center gap-2 text-lg font-bold tracking-tight mb-4">
+              <div className="w-6 h-6 rounded-md bg-[var(--lime)] text-[var(--bg)] flex items-center justify-center">
+                <Sparkles className="w-3 h-3" />
+              </div>
+              Morphly
+            </div>
+            <p className="text-[var(--text)]/50 max-w-xs mb-6">The AI-native creative engine for modern videography and rapid prototyping.</p>
+            <div className="text-[var(--text)]/30 text-xs">© 2026 Morphly AI Ltd.</div>
+          </div>
+          
+          <div>
+            <h5 className="font-bold mb-4 text-[var(--text)]">Products</h5>
+            <div className="flex flex-col gap-3 text-[var(--text)]/50">
+              <a href="#" className="hover:text-[var(--text)] transition-colors">LTX 2.3 Studio</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Pricing</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">API Explorer</a>
+            </div>
+          </div>
+          
+          <div>
+            <h5 className="font-bold mb-4 text-[var(--text)]">Resources</h5>
+            <div className="flex flex-col gap-3 text-[var(--text)]/50">
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Documentation</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Blog</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Community</a>
+            </div>
+          </div>
+          
+          <div>
+            <h5 className="font-bold mb-4 text-[var(--text)]">Company</h5>
+            <div className="flex flex-col gap-3 text-[var(--text)]/50">
+              <a href="#" className="hover:text-[var(--text)] transition-colors">About us</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-[var(--text)] transition-colors">Terms of Service</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }
@@ -548,7 +293,9 @@ export default function HomePage() {
   }, [view]);
 
   if (!sessionReady) {
-    return <div aria-label="Loading Morphly" className="app-session-loading" />;
+    return <div aria-label="Loading Morphly" className="app-session-loading min-h-screen bg-[var(--bg)] flex items-center justify-center">
+       <div className="w-8 h-8 rounded-full border-2 border-[var(--lime)] border-t-transparent animate-spin"></div>
+    </div>;
   }
 
   return (
@@ -559,6 +306,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         key={view}
         transition={{ duration: 0.18 }}
+        className="bg-[var(--bg)]"
       >
         {view === "home" ? (
           <Home
