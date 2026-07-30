@@ -13,6 +13,17 @@ type DashboardSection = "create" | "videos" | "assets" | "billing";
 
 // New Home Component
 function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => void }) {
+  const [packages, setPackages] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/billing/packages')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setPackages(data);
+      })
+      .catch(err => console.error('Failed to load packages:', err));
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] selection:bg-[var(--lime)] selection:text-[var(--bg)] overflow-x-hidden font-sans">
       
@@ -73,52 +84,27 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
           <p className="text-[var(--text)]/60">Concept to video in one step, with various resource plans available.</p>
         </div>
 
-        {/* Tab Mockup */}
-        <div className="flex justify-center mb-12">
-          <div className="inline-flex p-1 bg-[var(--panel)]/80 backdrop-blur rounded-xl border border-[var(--text)]/5">
-            <button className="px-6 py-2 rounded-lg bg-[var(--text)] text-[var(--bg)] font-medium text-sm shadow">Morphly 2.3</button>
-            <button className="px-6 py-2 rounded-lg text-[var(--text)]/70 hover:text-[var(--text)] font-medium text-sm transition-colors">Morphly Mini</button>
-          </div>
-        </div>
-
         <div className="grid md:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="bg-[var(--panel)]/40 border border-[var(--text)]/5 rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col">
-            <h3 className="text-xl font-bold mb-2">Starter</h3>
-            <div className="text-3xl font-bold mb-6">$10 <span className="text-sm font-normal text-[var(--text)]/50">/ 500 Credits</span></div>
-            <button onClick={onCreate} className="w-full py-3 rounded-lg border border-[var(--text)]/20 hover:bg-[var(--text)]/5 transition-colors font-medium mb-8">Get Plan</button>
-            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 50 x 720P videos</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> 4-8 second durations</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Standard processing queue</li>
-            </ul>
-          </div>
-
-          {/* Card 2 - Most Popular */}
-          <div className="bg-[var(--panel)] border border-[var(--lime)]/30 rounded-2xl p-8 backdrop-blur relative shadow-2xl flex flex-col transform md:-translate-y-4 z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--lime)] text-[var(--bg)] text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Most Popular</div>
-            <h3 className="text-xl font-bold mb-2">Creator</h3>
-            <div className="text-3xl font-bold mb-6">$25 <span className="text-sm font-normal text-[var(--text)]/50">/ 1500 Credits</span></div>
-            <button onClick={onCreate} className="w-full py-3 rounded-lg bg-[var(--text)] text-[var(--bg)] hover:opacity-90 transition-opacity font-medium mb-8">Get Plan</button>
-            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 150 x 1080P videos</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Up to 10 second durations (25 FPS)</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Priority processing queue</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Access to Prompt Enhancer</li>
-            </ul>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-[var(--panel)]/40 border border-[var(--text)]/5 rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col">
-            <h3 className="text-xl font-bold mb-2">Pro</h3>
-            <div className="text-3xl font-bold mb-6">$60 <span className="text-sm font-normal text-[var(--text)]/50">/ 4000 Credits</span></div>
-            <button onClick={onCreate} className="w-full py-3 rounded-lg border border-[var(--text)]/20 hover:bg-[var(--text)]/5 transition-colors font-medium mb-8">Get Plan</button>
-            <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate around 400 x 1080P videos</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Highest priority processing</li>
-              <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> 24/7 Support</li>
-            </ul>
-          </div>
+          {packages.length > 0 ? packages.map((pkg, i) => {
+            const isPopular = pkg.price_cents === 2500 || i === 1; // Highlight middle/25$ plan
+            return (
+              <div key={pkg.id} className={`bg-[var(--panel)] ${isPopular ? 'border-[var(--lime)]/30 shadow-2xl z-10 md:-translate-y-4' : 'border-[var(--text)]/5 opacity-90'} border rounded-2xl p-8 backdrop-blur hover:bg-[var(--panel)]/60 transition-colors flex flex-col relative`}>
+                {isPopular && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--lime)] text-[var(--bg)] text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Most Popular</div>
+                )}
+                <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
+                <div className="text-3xl font-bold mb-6">${(pkg.price_cents / 100).toFixed(2)} <span className="text-sm font-normal text-[var(--text)]/50">/ {pkg.credits} Credits</span></div>
+                <button onClick={onCreate} className={`w-full py-3 rounded-lg ${isPopular ? 'bg-[var(--text)] text-[var(--bg)]' : 'border border-[var(--text)]/20 hover:bg-[var(--text)]/5'} transition-all font-medium mb-8`}>Get Plan</button>
+                <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
+                  <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate high quality videos</li>
+                  <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Advanced LTX 2.3 integration</li>
+                  <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> {pkg.credits > 1000 ? 'Priority' : 'Standard'} processing queue</li>
+                </ul>
+              </div>
+            );
+          }) : (
+            <div className="col-span-3 text-center text-[var(--text)]/50 py-12">Loading packages...</div>
+          )}
         </div>
       </section>
 
