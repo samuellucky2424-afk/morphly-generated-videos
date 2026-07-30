@@ -6,7 +6,7 @@ import { Sparkles, ArrowRight, Video, Play, Box, Zap, Settings, Volume2, ShieldC
 import { createClient } from "@/src/lib/supabase/client";
 import { DashboardStudio as LiveDashboard } from "./dashboard-studio";
 import { LiveAuth } from "./live-auth";
-
+import Link from "next/link";
 // Types and generic structures
 type View = "home" | "dashboard" | "auth";
 type DashboardSection = "create" | "videos" | "assets" | "billing";
