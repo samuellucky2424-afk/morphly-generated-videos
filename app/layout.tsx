@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
+import { getThemeConfig } from "@/src/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -67,15 +68,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const theme = await getThemeConfig();
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSans.variable} antialiased`}
+        style={{
+          '--bg': theme.bg,
+          '--lime': theme.lime,
+          '--yellow': theme.yellow,
+        } as React.CSSProperties}
       >
         {children}
       </body>

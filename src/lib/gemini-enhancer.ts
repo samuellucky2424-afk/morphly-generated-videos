@@ -43,7 +43,7 @@ User Prompt: ${originalPrompt}`,
       return originalPrompt;
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as any;
     const enhanced = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (enhanced && typeof enhanced === 'string') {

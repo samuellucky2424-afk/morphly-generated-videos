@@ -12,7 +12,12 @@ INSERT INTO system_settings (key, value, description, is_public) VALUES
   "runpod_gpu_hourly_rate_usd": 3.49,
   "job_execution_timeout_ms": 900000,
   "job_total_ttl_ms": 3600000
-}', 'Global system configuration', true)
+}', 'Global system configuration', true),
+('theme_config', '{
+  "bg": "#080b0a",
+  "lime": "#dfff45",
+  "yellow": "#ffd829"
+}', 'UI color theme configuration', true)
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO credit_packages (name, slug, description, price_minor, currency, base_credits, bonus_credits, sort_order) VALUES

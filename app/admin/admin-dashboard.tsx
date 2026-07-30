@@ -11,6 +11,7 @@ import {
   Gauge,
   LayoutDashboard,
   LogOut,
+  Paintbrush,
   Plus,
   Search,
   Settings,
@@ -76,10 +77,11 @@ type AdminSection =
   | 'Billing'
   | 'Analytics'
   | 'System health'
-  | 'Settings';
+  | 'Settings'
+  | 'Design';
 
 const ADMIN_SECTIONS: Array<{
-  icon: typeof LayoutDashboard;
+  icon: any;
   label: AdminSection;
 }> = [
   { label: 'Overview', icon: LayoutDashboard },
@@ -89,6 +91,7 @@ const ADMIN_SECTIONS: Array<{
   { label: 'Analytics', icon: BarChart3 },
   { label: 'System health', icon: Gauge },
   { label: 'Settings', icon: Settings },
+  { label: 'Design', icon: Paintbrush },
 ];
 
 function initials(value: string) {
@@ -284,6 +287,51 @@ export function AdminDashboard({
   const [creditError, setCreditError] = useState('');
   const [creditSuccess, setCreditSuccess] = useState('');
   const [grantingCredits, setGrantingCredits] = useState(false);
+
+  const [themeForm, setThemeForm] = useState({ bg: '#080b0a', lime: '#dfff45', yellow: '#ffd829' });
+  const [savingTheme, setSavingTheme] = useState(false);
+  const [themeSuccess, setThemeSuccess] = useState('');
+  const [themeError, setThemeError] = useState('');
+
+  useEffect(() => {
+    async function loadTheme() {
+      try {
+        const res = await fetch('/api/admin/theme');
+        if (res.ok) {
+           const theme = await res.json();
+           setThemeForm(theme);
+        }
+      } catch (e) {}
+    }
+    loadTheme();
+  }, []);
+
+  async function saveTheme(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingTheme(true);
+    setThemeSuccess('');
+    setThemeError('');
+    try {
+      const res = await fetch('/api/admin/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(themeForm),
+      });
+      if (res.ok) {
+         setThemeSuccess('Theme updated successfully. Changes applied to your layout immediately.');
+         const newTheme = await res.json();
+         document.body.style.setProperty('--bg', newTheme.bg);
+         document.body.style.setProperty('--lime', newTheme.lime);
+         document.body.style.setProperty('--yellow', newTheme.yellow);
+      } else {
+         setThemeError('Failed to update theme.');
+      }
+    } catch (e) {
+      setThemeError('Failed to update theme.');
+    } finally {
+      setSavingTheme(false);
+    }
+  }
 
   const displayName = adminName || adminEmail.split('@')[0];
   const adminInitials = useMemo(() => initials(displayName), [displayName]);
@@ -747,6 +795,43 @@ export function AdminDashboard({
             <small>{role.replace('_', ' ')}</small>
           </div>
           <button onClick={signOut}>Sign out</button>
+        </div>
+      );
+    }
+    if (active === 'Design') {
+      return (
+        <div className="wide-card profile-card" style={{ display: 'block' }}>
+          <h2>Design & Theme Settings</h2>
+          <p style={{ marginBottom: 20 }}>Customize the appearance of the Morphly website. These changes are saved in Supabase and applied globally.</p>
+          
+          {themeError && (
+            <div className="admin-inline-message error" role="alert">
+              {themeError}
+            </div>
+          )}
+          {themeSuccess && (
+            <div className="admin-inline-message success" role="alert">
+              {themeSuccess}
+            </div>
+          )}
+          
+          <form onSubmit={saveTheme} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: 400 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Background Color
+              <input type="color" value={themeForm.bg} onChange={(e) => setThemeForm({...themeForm, bg: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Primary Accent (Lime Button / UI)
+              <input type="color" value={themeForm.lime} onChange={(e) => setThemeForm({...themeForm, lime: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Secondary Accent (Yellow Button / UI)
+              <input type="color" value={themeForm.yellow} onChange={(e) => setThemeForm({...themeForm, yellow: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <button className="lime-btn" type="submit" disabled={savingTheme} style={{ marginTop: 10 }}>
+              {savingTheme ? 'Saving...' : 'Save Theme Settings'}
+            </button>
+          </form>
         </div>
       );
     }
