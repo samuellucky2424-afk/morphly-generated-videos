@@ -41,11 +41,9 @@ export async function POST(request: NextRequest) {
     // 3. If Gemini failed (returned original prompt), refund the credits
     if (enhancedPrompt === prompt) {
       // Refund by granting credits back
-      await admin.rpc('admin_grant_credits', {
-        p_actor_user_id: user.id, // using user as actor since it's an automated system refund
-        p_target_user_id: user.id,
+      await admin.rpc('refund_prompt_enhancement_credits', {
+        p_user_id: user.id,
         p_amount: cost,
-        p_reason: 'Refund for failed prompt enhancement',
         p_idempotency_key: `refund:${idempotencyKey}`,
       });
       return NextResponse.json(
