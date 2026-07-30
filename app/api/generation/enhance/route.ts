@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (chargeError) {
       console.error('Failed to charge credits for enhancement:', chargeError);
       return NextResponse.json(
-        { error: chargeError.message || 'Insufficient credits for prompt enhancement' },
+        { error: `Debug Error: ${JSON.stringify(chargeError)}` },
         { status: 402 }
       );
     }
