@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     // Ensure we are saving only valid theme fields
     const newTheme = {
       bg: body.bg || defaultTheme.bg,
+      panel: body.panel || defaultTheme.panel,
+      panel2: body.panel2 || defaultTheme.panel2,
+      text: body.text || defaultTheme.text,
       lime: body.lime || defaultTheme.lime,
       yellow: body.yellow || defaultTheme.yellow,
     };

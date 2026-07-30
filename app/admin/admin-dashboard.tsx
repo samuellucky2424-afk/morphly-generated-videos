@@ -288,7 +288,7 @@ export function AdminDashboard({
   const [creditSuccess, setCreditSuccess] = useState('');
   const [grantingCredits, setGrantingCredits] = useState(false);
 
-  const [themeForm, setThemeForm] = useState({ bg: '#080b0a', lime: '#dfff45', yellow: '#ffd829' });
+  const [themeForm, setThemeForm] = useState({ bg: '#080b0a', panel: '#0e1210', panel2: '#131814', text: '#f5f7f2', lime: '#dfff45', yellow: '#ffd829' });
   const [savingTheme, setSavingTheme] = useState(false);
   const [themeSuccess, setThemeSuccess] = useState('');
   const [themeError, setThemeError] = useState('');
@@ -321,6 +321,9 @@ export function AdminDashboard({
          setThemeSuccess('Theme updated successfully. Changes applied to your layout immediately.');
          const newTheme = (await res.json()) as any;
          document.body.style.setProperty('--bg', newTheme.bg);
+         document.body.style.setProperty('--panel', newTheme.panel);
+         document.body.style.setProperty('--panel2', newTheme.panel2);
+         document.body.style.setProperty('--text', newTheme.text);
          document.body.style.setProperty('--lime', newTheme.lime);
          document.body.style.setProperty('--yellow', newTheme.yellow);
       } else {
@@ -819,6 +822,18 @@ export function AdminDashboard({
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
               Background Color
               <input type="color" value={themeForm.bg} onChange={(e) => setThemeForm({...themeForm, bg: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Panel Color
+              <input type="color" value={themeForm.panel} onChange={(e) => setThemeForm({...themeForm, panel: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Secondary Panel Color
+              <input type="color" value={themeForm.panel2} onChange={(e) => setThemeForm({...themeForm, panel2: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+              Text Color
+              <input type="color" value={themeForm.text} onChange={(e) => setThemeForm({...themeForm, text: e.target.value})} style={{ width: 60, height: 40, padding: 0 }} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
               Primary Accent (Lime Button / UI)

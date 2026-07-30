@@ -411,6 +411,7 @@ export function DashboardStudio({
   const [selectedJobId, setSelectedJobId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [enhancingPrompt, setEnhancingPrompt] = useState(false);
   const [uploadStates, setUploadStates] = useState<
     Record<Asset["kind"], UploadState>
   >({
@@ -598,6 +599,38 @@ export function DashboardStudio({
     url.searchParams.set("view", "dashboard");
     url.searchParams.set("section", SECTION_QUERY[section]);
     window.history.replaceState(null, "", url);
+  }
+
+  async function handleEnhancePrompt() {
+    if (!prompt.trim() || prompt.length < 3) {
+      setStudioError("Please enter a short prompt first to enhance it.");
+      return;
+    }
+    
+    setStudioError("");
+    setEnhancingPrompt(true);
+    
+    try {
+      const res = await fetch("/api/generation/enhance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      
+      if (res.ok) {
+        const data = await res.json() as { enhancedPrompt?: string };
+        setPrompt(data.enhancedPrompt ?? "");
+        // refresh wallet to reflect charged credits
+        void refreshJobsAndWallet();
+      } else {
+        const errorData = await res.json() as { error?: string };
+        setStudioError(errorData.error || "Failed to enhance prompt.");
+      }
+    } catch (e) {
+      setStudioError("An unexpected error occurred while enhancing the prompt.");
+    } finally {
+      setEnhancingPrompt(false);
+    }
   }
 
   function chooseMode(nextMode: ModeLabel) {
@@ -1286,8 +1319,18 @@ export function DashboardStudio({
                 )}
 
                 <label className="prompt-label">
-                  <span>
-                    Describe your scene <small>{prompt.length} / 1200</small>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Describe your scene <small>{prompt.length} / 1200</small></span>
+                    <button 
+                      type="button" 
+                      onClick={handleEnhancePrompt} 
+                      disabled={enhancingPrompt || prompt.length < 3}
+                      className="enhance-btn"
+                      style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--lime)', background: 'transparent', color: 'var(--lime)', cursor: enhancingPrompt || prompt.length < 3 ? 'not-allowed' : 'pointer', opacity: enhancingPrompt || prompt.length < 3 ? 0.5 : 1 }}
+                    >
+                      <WandSparkles size={14} />
+                      {enhancingPrompt ? 'Enhancing...' : 'Enhance (10 Credits)'}
+                    </button>
                   </span>
                   <textarea
                     maxLength={1200}

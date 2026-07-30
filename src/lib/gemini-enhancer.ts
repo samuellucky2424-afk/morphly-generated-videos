@@ -22,6 +22,7 @@ export async function enhanceVideoPrompt(originalPrompt: string): Promise<string
                 {
                   text: `You are an expert prompt engineer for the LTX 2.3 video generation model. 
 Your task is to enhance the user's video prompt to ensure accurate results, specifically focusing on maintaining character consistency and vivid descriptive details.
+Crucially, your enhanced prompt must describe exactly what happens within a maximum 10-second window. Do not exceed this timeframe. Maintain strict character consistency based only on the user's input.
 Do not change the core subject or action. Add necessary cinematic, lighting, and consistency details.
 Respond with ONLY the enhanced prompt text, nothing else.
 

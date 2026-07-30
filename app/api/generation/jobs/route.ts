@@ -14,7 +14,6 @@ import {
 import { reconcileGenerationJob } from '@/src/lib/generation-reconciliation';
 import { submitRunPodJob } from '@/src/lib/runpod';
 import { createAdminClient } from '@/src/lib/supabase/admin';
-import { enhanceVideoPrompt } from '@/src/lib/gemini-enhancer';
 
 export const dynamic = 'force-dynamic';
 
@@ -334,10 +333,7 @@ export async function POST(request: NextRequest) {
     const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647);
     const idempotencyKey = `gen-reserve:${input.clientRequestId}`;
     
-    let enhancedPrompt = input.prompt;
-    if (env.GEMINI_KEY) {
-      enhancedPrompt = await enhanceVideoPrompt(input.prompt);
-    }
+    const enhancedPrompt = input.prompt;
 
     const { data: job, error: jobError } = await admin
       .from('generation_jobs')

@@ -81,6 +81,9 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSans.variable} antialiased`}
         style={{
           '--bg': theme.bg,
+          '--panel': theme.panel,
+          '--panel2': theme.panel2,
+          '--text': theme.text,
           '--lime': theme.lime,
           '--yellow': theme.yellow,
         } as React.CSSProperties}
