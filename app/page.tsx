@@ -179,18 +179,18 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
           <div>
             <h5 className="font-bold mb-4 text-[var(--text)]">Resources</h5>
             <div className="flex flex-col gap-3 text-[var(--text)]/50">
-              <a href="#" className="hover:text-[var(--text)] transition-colors">Documentation</a>
-              <a href="#" className="hover:text-[var(--text)] transition-colors">Blog</a>
-              <a href="#" className="hover:text-[var(--text)] transition-colors">Community</a>
+              <Link href="/docs" className="hover:text-[var(--text)] transition-colors">Documentation</Link>
+              <Link href="/blog" className="hover:text-[var(--text)] transition-colors">Blog</Link>
+              <Link href="/community" className="hover:text-[var(--text)] transition-colors">Community</Link>
             </div>
           </div>
           
           <div>
             <h5 className="font-bold mb-4 text-[var(--text)]">Company</h5>
             <div className="flex flex-col gap-3 text-[var(--text)]/50">
-              <a href="#" className="hover:text-[var(--text)] transition-colors">About us</a>
-              <a href="#" className="hover:text-[var(--text)] transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-[var(--text)] transition-colors">Terms of Service</a>
+              <Link href="/about" className="hover:text-[var(--text)] transition-colors">About us</Link>
+              <Link href="/privacy" className="hover:text-[var(--text)] transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-[var(--text)] transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
