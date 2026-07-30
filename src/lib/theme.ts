@@ -1,6 +1,11 @@
 import { createAdminClient } from '@/src/lib/supabase/admin';
 
+export type ThemeMode = 'dark' | 'light';
+export type AccentColor = 'lime' | 'red' | 'blue' | 'purple' | 'orange' | 'pink';
+
 export type ThemeConfig = {
+  mode: ThemeMode;
+  accent: AccentColor;
   bg: string;
   panel: string;
   panel2: string;
@@ -9,14 +14,41 @@ export type ThemeConfig = {
   yellow: string;
 };
 
-export const defaultTheme: ThemeConfig = {
-  bg: '#080b0a',
-  panel: '#0e1210',
-  panel2: '#131814',
-  text: '#f5f7f2',
-  lime: '#dfff45',
-  yellow: '#ffd829',
+export const THEME_PRESETS = {
+  modes: {
+    dark: { bg: '#080b0a', panel: '#0e1210', panel2: '#131814', text: '#f5f7f2' },
+    light: { bg: '#ffffff', panel: '#f5f7f2', panel2: '#eaeaea', text: '#111111' },
+  },
+  accents: {
+    lime: { primary: '#dfff45', secondary: '#ffd829' },
+    red: { primary: '#ff4d4d', secondary: '#ff8080' },
+    blue: { primary: '#4da6ff', secondary: '#80bfff' },
+    purple: { primary: '#b58aff', secondary: '#d9b3ff' },
+    orange: { primary: '#ff9933', secondary: '#ffb366' },
+    pink: { primary: '#ff66b3', secondary: '#ff99cc' },
+  }
 };
+
+export const defaultTheme: ThemeConfig = {
+  mode: 'dark',
+  accent: 'lime',
+  ...THEME_PRESETS.modes.dark,
+  lime: THEME_PRESETS.accents.lime.primary,
+  yellow: THEME_PRESETS.accents.lime.secondary,
+};
+
+export function computeTheme(mode?: ThemeMode, accent?: AccentColor): ThemeConfig {
+  const selectedMode = mode && THEME_PRESETS.modes[mode] ? mode : 'dark';
+  const selectedAccent = accent && THEME_PRESETS.accents[accent] ? accent : 'lime';
+  
+  return {
+    mode: selectedMode,
+    accent: selectedAccent,
+    ...THEME_PRESETS.modes[selectedMode],
+    lime: THEME_PRESETS.accents[selectedAccent].primary,
+    yellow: THEME_PRESETS.accents[selectedAccent].secondary,
+  };
+}
 
 export async function getThemeConfig(): Promise<ThemeConfig> {
   try {
@@ -32,14 +64,7 @@ export async function getThemeConfig(): Promise<ThemeConfig> {
     }
 
     const theme = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-    return {
-      bg: theme.bg || defaultTheme.bg,
-      panel: theme.panel || defaultTheme.panel,
-      panel2: theme.panel2 || defaultTheme.panel2,
-      text: theme.text || defaultTheme.text,
-      lime: theme.lime || defaultTheme.lime,
-      yellow: theme.yellow || defaultTheme.yellow,
-    };
+    return computeTheme(theme.mode, theme.accent);
   } catch (error) {
     console.error('Failed to load theme config:', error);
     return defaultTheme;
