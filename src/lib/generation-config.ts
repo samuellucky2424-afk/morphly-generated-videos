@@ -70,7 +70,7 @@ const MODE_CREDITS_PER_SECOND: Record<GenerationMode, number> = {
 };
 
 const FPS_MULTIPLIERS: Record<number, number> = {
-  8: 1,
+  25: 1,
 };
 
 /**
@@ -84,7 +84,7 @@ function getFpsMultiplier(fps: number) {
   if (typeof console !== 'undefined') {
     console.warn(
       `[generation-config] Unrecognised FPS value ${fps}; using cost multiplier 1. ` +
-        'Check the generation_presets table — LTX 2.3 generates at 8 FPS.',
+        'Check the generation_presets table — LTX 2.3 generates at 25 FPS.',
     );
   }
   return 1;

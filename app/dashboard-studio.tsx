@@ -1346,9 +1346,9 @@ export function DashboardStudio({
                   </label>
                   <label>
                     Frame rate
-                    <select disabled value={fps || ""}>
+                    <select value={fps || ""} onChange={() => {}}>
                       <option value={fps || ""}>
-                        {fps ? `${fps} fps · preset controlled` : "Select a preset"}
+                        {fps ? `${fps} fps` : "Select a preset"}
                       </option>
                     </select>
                   </label>
