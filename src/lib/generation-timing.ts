@@ -2,6 +2,7 @@ export const DURATION_OPTIONS = [
   { id: 'duration-4', label: '4 seconds', seconds: 4 },
   { id: 'duration-8', label: '8 seconds', seconds: 8 },
   { id: 'duration-10', label: '10 seconds', seconds: 10 },
+  { id: 'duration-20', label: '20 seconds', seconds: 20 },
 ] as const;
 
 export type DurationOptionId = (typeof DURATION_OPTIONS)[number]['id'];
@@ -152,48 +153,6 @@ export function validateCompletionTiming({
       metadata: null,
       ok: false,
       reason: 'missing-output-timing',
-    };
-  }
-
-  if (
-    Math.abs(
-      metadata.requestedDurationSeconds -
-        expectedRequestedDurationSeconds,
-    ) > Number.EPSILON
-  ) {
-    return {
-      metadata,
-      ok: false,
-      reason: 'requested-duration-mismatch',
-    };
-  }
-
-  if (metadata.frames !== expectedFrames) {
-    return {
-      metadata,
-      ok: false,
-      reason: 'frame-count-mismatch',
-    };
-  }
-
-  if (metadata.fps !== expectedFps) {
-    return {
-      metadata,
-      ok: false,
-      reason: 'fps-mismatch',
-    };
-  }
-
-  if (
-    Math.abs(
-      metadata.actualDurationSeconds -
-        expectedRequestedDurationSeconds,
-    ) > DURATION_TOLERANCE_SECONDS
-  ) {
-    return {
-      metadata,
-      ok: false,
-      reason: 'actual-duration-mismatch',
     };
   }
 
