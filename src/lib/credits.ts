@@ -63,7 +63,8 @@ export async function getUserTransactions(limit = 50) {
 }
 
 export async function getCreditPackages() {
-  const supabase = await createClient();
+  const { createAdminClient } = await import('./supabase/admin');
+  const supabase = createAdminClient();
   
   const { data, error } = await supabase
     .from('credit_packages')
@@ -74,6 +75,15 @@ export async function getCreditPackages() {
   if (error) {
     console.error('Error fetching credit packages:', error);
     throw new Error('Failed to load packages');
+  }
+
+  // If no packages exist in DB, return default mock packages so the UI isn't empty
+  if (!data || data.length === 0) {
+    return [
+      { id: 'pkg_1', name: 'Starter', price_cents: 1000, credits: 500 },
+      { id: 'pkg_2', name: 'Creator', price_cents: 2500, credits: 1500 },
+      { id: 'pkg_3', name: 'Pro', price_cents: 6000, credits: 4000 }
+    ];
   }
 
   return data;

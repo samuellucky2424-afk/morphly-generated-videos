@@ -57,10 +57,10 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
       {/* Hero Section */}
       <section className="relative pt-40 pb-32 px-6 flex flex-col items-center justify-center min-h-[90vh] overflow-hidden mt-16 border-b border-[var(--text)]/5">
         {/* Background Video */}
-        <div className="absolute inset-0 z-0 bg-[var(--panel2)]">
-          <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-40 mix-blend-luminosity" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/60 to-[var(--bg)]/10"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)] via-transparent to-transparent opacity-80"></div>
+        <div className="absolute inset-0 z-0 bg-[var(--bg)]">
+          <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/40 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)] via-transparent to-transparent opacity-50"></div>
         </div>
 
         {/* Hero Content */}

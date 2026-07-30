@@ -21,7 +21,7 @@ export const THEME_PRESETS = {
   },
   accents: {
     lime: { primary: '#dfff45', secondary: '#ffd829' },
-    red: { primary: '#ff4d4d', secondary: '#ff8080' },
+    red: { primary: '#990000', secondary: '#cc0000' },
     blue: { primary: '#4da6ff', secondary: '#80bfff' },
     purple: { primary: '#b58aff', secondary: '#d9b3ff' },
     orange: { primary: '#ff9933', secondary: '#ffb366' },
