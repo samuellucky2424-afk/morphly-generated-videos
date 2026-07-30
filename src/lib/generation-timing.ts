@@ -11,7 +11,7 @@ export const DURATION_OPTION_IDS = DURATION_OPTIONS.map(
 ) as [DurationOptionId, ...DurationOptionId[]];
 
 export const DEFAULT_DURATION_OPTION_ID: DurationOptionId = 'duration-8';
-export const DURATION_TOLERANCE_SECONDS = 0.25;
+export const DURATION_TOLERANCE_SECONDS = 0.4;
 
 export type RunPodOutputTiming = {
   actualDurationSeconds: number;
