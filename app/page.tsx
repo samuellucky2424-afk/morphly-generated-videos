@@ -47,7 +47,7 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
             <button onClick={onSignIn} className="text-sm font-medium text-[var(--text)]/70 hover:text-[var(--text)] transition-colors">
               Sign in
             </button>
-            <button onClick={onCreate} className="text-sm font-medium px-4 py-2 rounded-lg bg-[var(--text)]/5 border border-[var(--text)]/10 hover:bg-[var(--text)]/10 transition-colors">
+            <button onClick={onCreate} className="text-sm font-medium px-4 py-2 rounded-lg bg-[var(--lime)] text-white hover:brightness-110 transition-colors shadow-sm">
               Sign up
             </button>
           </div>
@@ -97,7 +97,7 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
                 )}
                 <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
                 <div className="text-3xl font-bold mb-6">{symbol}{(price / 100).toFixed(2)} <span className="text-sm font-normal text-[var(--text)]/50">/ {credits} Credits</span></div>
-                <button onClick={onCreate} className={`w-full py-3 rounded-lg ${isPopular ? 'bg-[var(--text)] text-[var(--bg)]' : 'border border-[var(--text)]/20 hover:bg-[var(--text)]/5'} transition-all font-medium mb-8`}>Get Plan</button>
+                <button onClick={onCreate} className="w-full py-3 rounded-lg bg-[var(--lime)] text-white hover:brightness-110 transition-all font-bold mb-8 shadow-sm">Get Plan</button>
                 <ul className="space-y-4 text-sm text-[var(--text)]/70 mt-auto">
                   <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Generate high quality videos</li>
                   <li className="flex items-start gap-3"><Check className="w-4 h-4 mt-0.5 text-[var(--lime)]" /> Advanced LTX 2.3 integration</li>
