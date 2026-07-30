@@ -1,7 +1,6 @@
--- 0010_prompt_enhancement_credits.sql
+-- 0011_fix_prompt_enhancement_credits.sql
 --
--- Safely charges credits for prompt enhancement, ensuring atomic updates.
---
+-- Fixes ambiguous column reference in charge_prompt_enhancement_credits
 
 CREATE OR REPLACE FUNCTION charge_prompt_enhancement_credits(
     p_user_id uuid,
@@ -67,8 +66,8 @@ BEGIN
     -- Update wallet
     UPDATE wallets
     SET 
-        available_credits = available_credits - p_amount,
-        lifetime_spent = lifetime_spent + p_amount
+        available_credits = wallets.available_credits - p_amount,
+        lifetime_spent = wallets.lifetime_spent + p_amount
     WHERE user_id = p_user_id
     RETURNING * INTO v_after;
 
