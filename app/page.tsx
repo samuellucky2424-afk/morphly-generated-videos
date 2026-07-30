@@ -44,28 +44,25 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 max-w-5xl mx-auto text-center flex flex-col items-center mt-10">
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
-          Professional AI Video <br/> in One Click
-        </h1>
-        <p className="text-lg text-[var(--text)]/60 max-w-2xl mb-10 leading-relaxed">
-          Endless Possibilities. Morphly LTX 2.3 provides a state-of-the-art multimodal video generation model directly to your browser.
-        </p>
-        <button onClick={onCreate} className="px-8 py-4 rounded-xl bg-[var(--lime)] text-[var(--bg)] font-bold text-lg hover:brightness-110 hover:scale-[1.02] transition-all flex items-center gap-2">
-          Get Started Now <ArrowRight className="w-5 h-5" />
-        </button>
+      <section className="relative pt-40 pb-32 px-6 flex flex-col items-center justify-center min-h-[90vh] overflow-hidden mt-16 border-b border-[var(--text)]/5">
+        {/* Background Video */}
+        <div className="absolute inset-0 z-0 bg-[var(--panel2)]">
+          <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-60 mix-blend-lighten" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/60 to-[var(--bg)]/10"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)] via-transparent to-transparent opacity-80"></div>
+        </div>
 
-        {/* Hero Media Container (Glassmorphism) */}
-        <div className="mt-20 w-full aspect-video max-w-4xl bg-[var(--panel)]/50 border border-[var(--text)]/5 rounded-2xl overflow-hidden relative group backdrop-blur-sm p-2 shadow-2xl">
-           <div className="w-full h-full rounded-xl overflow-hidden relative bg-[var(--panel2)]">
-             <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-80 mix-blend-lighten" />
-             <div className="absolute inset-0 bg-gradient-to-t from-[var(--panel2)] via-transparent to-transparent opacity-80"></div>
-             
-             {/* Floating Audio Toggle mockup */}
-             <div className="absolute right-6 bottom-6 w-10 h-10 rounded-full bg-[var(--panel)]/60 backdrop-blur flex items-center justify-center border border-[var(--text)]/10 text-[var(--text)] cursor-pointer hover:bg-[var(--panel)] transition-colors">
-               <Volume2 className="w-4 h-4" />
-             </div>
-           </div>
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1] drop-shadow-2xl">
+            Professional AI Video <br/> in One Click
+          </h1>
+          <p className="text-lg text-[var(--text)]/80 max-w-2xl mb-10 leading-relaxed font-medium">
+            Endless Possibilities. Morphly LTX 2.3 provides a state-of-the-art multimodal video generation model directly to your browser.
+          </p>
+          <button onClick={onCreate} className="px-8 py-4 rounded-xl bg-[var(--lime)] text-[var(--bg)] font-bold text-lg hover:brightness-110 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+            Get Started Now <ArrowRight className="w-5 h-5" />
+          </button>
         </div>
       </section>
 
