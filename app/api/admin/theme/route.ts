@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminUser } from '@/src/lib/admin-auth';
+import { getAdminAccess } from '@/src/lib/admin-auth';
 import { createAdminClient } from '@/src/lib/supabase/admin';
 import { defaultTheme } from '@/src/lib/theme';
 
 export async function GET() {
   try {
-    await requireAdminUser();
+    const access = await getAdminAccess();
+    if (!access.authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const admin = createAdminClient();
     
     const { data, error } = await admin
@@ -28,8 +31,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminUser();
-    const body = await request.json();
+    const access = await getAdminAccess();
+    if (!access.authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const body = (await request.json()) as any;
     
     // Ensure we are saving only valid theme fields
     const newTheme = {

@@ -298,7 +298,7 @@ export function AdminDashboard({
       try {
         const res = await fetch('/api/admin/theme');
         if (res.ok) {
-           const theme = await res.json();
+           const theme = (await res.json()) as any;
            setThemeForm(theme);
         }
       } catch (e) {}
@@ -319,7 +319,7 @@ export function AdminDashboard({
       });
       if (res.ok) {
          setThemeSuccess('Theme updated successfully. Changes applied to your layout immediately.');
-         const newTheme = await res.json();
+         const newTheme = (await res.json()) as any;
          document.body.style.setProperty('--bg', newTheme.bg);
          document.body.style.setProperty('--lime', newTheme.lime);
          document.body.style.setProperty('--yellow', newTheme.yellow);
