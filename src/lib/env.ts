@@ -13,7 +13,9 @@ const envSchema = z.object({
   FLW_SECRET_HASH: z.string().min(1),
   APP_URL: z.string().url(),
   CRON_SECRET: z.string().min(1),
+  GEMINI_API_KEY: z.string().optional(),
   GEMINI_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().optional(),
 });
 
 type Env = z.infer<typeof envSchema>;
@@ -31,7 +33,9 @@ const rawEnv = {
   FLW_SECRET_HASH: process.env.FLW_SECRET_HASH,
   APP_URL: process.env.APP_URL,
   CRON_SECRET: process.env.CRON_SECRET,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   GEMINI_KEY: process.env.GEMINI_KEY,
+  GEMINI_MODEL: process.env.GEMINI_MODEL,
 } satisfies Record<keyof Env, string | undefined>;
 
 export const env = new Proxy({} as Env, {

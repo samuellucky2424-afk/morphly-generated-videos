@@ -1,61 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/src/lib/auth';
 import { createAdminClient } from '@/src/lib/supabase/admin';
-import { enhanceVideoPrompt } from '@/src/lib/gemini-enhancer';
+import {
+  enhanceVideoPrompt,
+  GeminiEnhancementError,
+  isPromptEnhancerConfigured,
+} from '@/src/lib/gemini-enhancer';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+const ENHANCEMENT_COST = 10;
+const MAX_PROMPT_LENGTH = 4_000;
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireApiUser();
-    const body = await request.json() as { prompt?: string };
-    const prompt = body.prompt;
+    const body = (await request.json().catch(() => null)) as {
+      prompt?: unknown;
+    } | null;
+    const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
 
-    if (!prompt || typeof prompt !== 'string') {
+    if (prompt.length < 3) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
+
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+      return NextResponse.json(
+        { error: `Prompt must be ${MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.` },
+        { status: 400 },
+      );
+    }
+
+    if (!isPromptEnhancerConfigured()) {
+      console.error(
+        'Prompt enhancement is unavailable because GEMINI_API_KEY is not configured.',
+      );
+      return NextResponse.json(
+        { error: 'Prompt enhancement is temporarily unavailable.' },
+        { status: 503 },
+      );
     }
 
     const admin = createAdminClient();
     const idempotencyKey = `prompt-enhance:${user.id}:${randomUUID()}`;
-    const cost = 10; // Fixed cost for prompt enhancement
 
-    // 1. Charge the credits
     const { error: chargeError } = await admin.rpc('charge_prompt_enhancement_credits', {
       p_user_id: user.id,
-      p_amount: cost,
+      p_amount: ENHANCEMENT_COST,
       p_idempotency_key: idempotencyKey,
     });
 
     if (chargeError) {
       console.error('Failed to charge credits for enhancement:', chargeError);
+      const insufficientCredits = chargeError.message
+        ?.toLowerCase()
+        .includes('insufficient credits');
       return NextResponse.json(
-        { error: `Debug Error: ${JSON.stringify(chargeError)}` },
-        { status: 402 }
+        {
+          error: insufficientCredits
+            ? `You need at least ${ENHANCEMENT_COST} credits to enhance a prompt.`
+            : 'Credits could not be charged. Please try again.',
+        },
+        { status: insufficientCredits ? 402 : 503 },
       );
     }
 
-    // 2. Call Gemini
-    const enhancedPrompt = await enhanceVideoPrompt(prompt);
+    try {
+      const enhancedPrompt = await enhanceVideoPrompt(prompt);
 
-    // 3. If Gemini failed (returned original prompt), refund the credits
-    if (enhancedPrompt === prompt) {
-      // Refund by granting credits back
-      await admin.rpc('refund_prompt_enhancement_credits', {
-        p_user_id: user.id,
-        p_amount: cost,
-        p_idempotency_key: `refund:${idempotencyKey}`,
+      if (enhancedPrompt === prompt) {
+        throw new GeminiEnhancementError(
+          'invalid_response',
+          'Gemini returned the original prompt without enhancing it.',
+        );
+      }
+
+      return NextResponse.json({ enhancedPrompt });
+    } catch (enhancementError) {
+      const { error: refundError } = await admin.rpc(
+        'refund_prompt_enhancement_credits',
+        {
+          p_user_id: user.id,
+          p_amount: ENHANCEMENT_COST,
+          p_idempotency_key: `refund:${idempotencyKey}`,
+        },
+      );
+
+      if (refundError) {
+        console.error('Prompt enhancement and automatic refund failed:', {
+          enhancementError,
+          refundError,
+          userId: user.id,
+        });
+        return NextResponse.json(
+          {
+            error:
+              'Enhancement failed and the credit refund could not be confirmed. Please contact support.',
+          },
+          { status: 500 },
+        );
+      }
+
+      console.error('Prompt enhancement failed; credits refunded:', {
+        code:
+          enhancementError instanceof GeminiEnhancementError
+            ? enhancementError.code
+            : 'unknown',
+        providerStatus:
+          enhancementError instanceof GeminiEnhancementError
+            ? enhancementError.providerStatus
+            : undefined,
+        userId: user.id,
       });
       return NextResponse.json(
-        { error: 'Enhancement failed, credits refunded.' },
-        { status: 500 }
+        { error: 'Enhancement failed, and your credits were refunded. Please try again.' },
+        { status: 503 },
       );
     }
-
-    return NextResponse.json({ enhancedPrompt });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in prompt enhancement route:', error);
-    if (error.message === 'Unauthorized') {
+    if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

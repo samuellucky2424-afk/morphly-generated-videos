@@ -21,7 +21,9 @@ The authenticated studio includes:
    installations that already ran `0001` through `0005` only need
    `0006_functional_creator_dashboard.sql`.
 2. Add the values from [`.env.example`](.env.example) to the deployment
-   environment. Set `APP_URL=https://ai.morphly.fun` in production.
+   environment. Set `APP_URL=https://ai.morphly.fun` in production. Set
+   `GEMINI_API_KEY` to a Google AI Studio API key; `GEMINI_MODEL` defaults to
+   the current production model shown in `.env.example`.
 3. In Supabase Auth, add `https://ai.morphly.fun/api/auth/callback` to the
    allowed redirect URLs. Configure Google as an optional OAuth provider.
 4. Configure the RunPod endpoint worker to accept the input contract below.

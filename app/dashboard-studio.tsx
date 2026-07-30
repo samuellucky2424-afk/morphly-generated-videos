@@ -606,28 +606,28 @@ export function DashboardStudio({
       setStudioError("Please enter a short prompt first to enhance it.");
       return;
     }
-    
+
     setStudioError("");
     setEnhancingPrompt(true);
-    
+
     try {
-      const res = await fetch("/api/generation/enhance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
-      });
-      
-      if (res.ok) {
-        const data = await res.json() as { enhancedPrompt?: string };
-        setPrompt(data.enhancedPrompt ?? "");
-        // refresh wallet to reflect charged credits
-        void refreshJobsAndWallet();
-      } else {
-        const errorData = await res.json() as { error?: string };
-        setStudioError(errorData.error || "Failed to enhance prompt.");
-      }
-    } catch (e) {
-      setStudioError("An unexpected error occurred while enhancing the prompt.");
+      const data = await requestJson<{ enhancedPrompt: string }>(
+        "/api/generation/enhance",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        },
+      );
+      setPrompt(data.enhancedPrompt);
+      // Refresh the wallet to reflect the enhancement charge.
+      void refreshJobsAndWallet();
+    } catch (error) {
+      setStudioError(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while enhancing the prompt.",
+      );
     } finally {
       setEnhancingPrompt(false);
     }
