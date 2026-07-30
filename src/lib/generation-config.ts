@@ -73,6 +73,23 @@ const FPS_MULTIPLIERS: Record<number, number> = {
   8: 1,
 };
 
+/**
+ * Returns the FPS cost multiplier. Falls back to 1 for unknown FPS values
+ * instead of blocking generation entirely.
+ */
+function getFpsMultiplier(fps: number) {
+  if (fps in FPS_MULTIPLIERS) {
+    return FPS_MULTIPLIERS[fps];
+  }
+  if (typeof console !== 'undefined') {
+    console.warn(
+      `[generation-config] Unrecognised FPS value ${fps}; using cost multiplier 1. ` +
+        'Check the generation_presets table — LTX 2.3 generates at 8 FPS.',
+    );
+  }
+  return 1;
+}
+
 export function getResolution(key: string) {
   return RESOLUTION_OPTIONS.find((option) => option.key === key) ?? null;
 }
@@ -104,7 +121,7 @@ export function calculateGenerationCost({
 }) {
   const resolution = getResolution(resolutionKey);
 
-  if (!resolution || !FPS_MULTIPLIERS[fps]) {
+  if (!resolution) {
     return null;
   }
 
@@ -114,7 +131,7 @@ export function calculateGenerationCost({
       MODE_CREDITS_PER_SECOND[mode] *
         durationSeconds *
         resolution.costMultiplier *
-        FPS_MULTIPLIERS[fps] *
+        getFpsMultiplier(fps) *
         getPresetMultiplier(presetSlug),
     ),
   );

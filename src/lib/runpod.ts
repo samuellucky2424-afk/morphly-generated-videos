@@ -1,5 +1,18 @@
 import { env } from './env';
 
+/**
+ * Payload sent to the RunPod serverless worker.
+ *
+ * Field names verified against the Python handler (rp_handler.py):
+ *   mode, prompt, negative_prompt, frames, width, height, fps,
+ *   requested_duration_seconds, inference_steps, guidance_scale,
+ *   seed, image_path, video_path, job_id.
+ *
+ * NOTE: The worker ignores output_bucket and output_path — it uploads
+ * to `generated/{job_id}.mp4` using its own SUPABASE_BUCKET env var.
+ * The user_id, output_bucket, and output_path fields are kept for
+ * forward compatibility but have no effect on the current worker.
+ */
 interface RunPodInput {
   mode: 'text_to_video' | 'image_to_video' | 'video_to_video';
   prompt: string;
@@ -9,7 +22,7 @@ interface RunPodInput {
   height: number;
   fps: number;
   requested_duration_seconds: number;
-  num_inference_steps: number;
+  inference_steps: number;
   guidance_scale: number;
   seed?: number;
   image_path?: string;

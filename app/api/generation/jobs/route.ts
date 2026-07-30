@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
         height: resolution.height,
         fps: presetFps,
         requested_duration_seconds: durationOption.seconds,
-        num_inference_steps: Number(preset.inference_steps),
+        inference_steps: Number(preset.inference_steps),
         guidance_scale: Number(preset.guidance_scale),
         seed,
         image_path:

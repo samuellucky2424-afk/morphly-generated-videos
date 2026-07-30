@@ -105,11 +105,14 @@ async function findStoredOutput(
   const directories = [
     `generation-outputs/${userId}/${generationId}`,
     `generation-outputs/${generationId}`,
+    `generated/${generationId}`,
   ];
   if (runpodJobId) {
     directories.push(
       `generation-outputs/${runpodJobId}`,
       `outputs/${runpodJobId}`,
+      `generated/${runpodJobId}`,
+      `generated`,
     );
   }
 

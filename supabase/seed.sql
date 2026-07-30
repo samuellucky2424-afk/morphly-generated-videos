@@ -23,7 +23,7 @@ INSERT INTO credit_packages (name, slug, description, price_minor, currency, bas
 ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO generation_presets (name, slug, description, action, width, height, frames, fps, inference_steps, guidance_scale, credit_cost, feature_flag, is_public, is_active, sort_order) VALUES
-('Preview', 'preview', 'Fast generation for testing motion.', 'text_to_video', 256, 256, 65, 8, 1, 1, 70, 'text_to_video_enabled', true, true, 1),
-('Standard', 'standard', 'Standard definition generation.', 'text_to_video', 512, 512, 65, 8, 20, 7.5, 200, 'text_to_video_enabled', false, false, 2),
-('Pro', 'pro', 'High definition cinematic output.', 'text_to_video', 1024, 1024, 65, 8, 30, 7.5, 500, 'text_to_video_enabled', false, false, 3)
+('Preview', 'preview', 'Fast draft render for testing motion.', 'text_to_video', 768, 448, 33, 8, 8, 1.0, 20, 'text_to_video_enabled', true, true, 1),
+('Standard', 'standard', 'Balanced quality for everyday creation.', 'text_to_video', 768, 448, 65, 8, 40, 3.5, 50, 'text_to_video_enabled', true, true, 2),
+('Pro', 'pro', 'Higher-detail cinematic generation.', 'text_to_video', 1024, 576, 81, 8, 50, 4.0, 120, 'text_to_video_enabled', true, true, 3)
 ON CONFLICT (slug) DO NOTHING;

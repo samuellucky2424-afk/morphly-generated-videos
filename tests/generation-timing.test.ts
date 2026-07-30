@@ -5,7 +5,14 @@ import {
   resolveDurationOption,
   validateCompletionTiming,
 } from '../src/lib/generation-timing.ts';
-import { RESOLUTION_OPTIONS } from '../src/lib/generation-config.ts';
+import {
+  calculateGenerationCost,
+  RESOLUTION_OPTIONS,
+} from '../src/lib/generation-config.ts';
+
+test('4 seconds at 8 FPS produces 33 LTX frames', () => {
+  assert.equal(calculateLtxFrameCount(4, 8), 33);
+});
 
 test('8 seconds at 8 FPS produces 65 LTX frames', () => {
   assert.equal(calculateLtxFrameCount(8, 8), 65);
@@ -71,3 +78,28 @@ test('an 8-second request cannot silently complete as a 4-second video', () => {
     reason: 'actual-duration-mismatch',
   });
 });
+
+test('cost calculator returns a valid cost at 8 FPS', () => {
+  const cost = calculateGenerationCost({
+    durationSeconds: 8,
+    fps: 8,
+    mode: 'text_to_video',
+    presetSlug: 'standard',
+    resolutionKey: 'landscape-720',
+  });
+  assert.ok(cost !== null, 'cost should not be null at 8 FPS');
+  assert.ok(typeof cost === 'number' && cost > 0, 'cost must be a positive number');
+});
+
+test('cost calculator does not return null for non-standard FPS (fallback)', () => {
+  const cost = calculateGenerationCost({
+    durationSeconds: 8,
+    fps: 24,
+    mode: 'text_to_video',
+    presetSlug: 'standard',
+    resolutionKey: 'landscape-720',
+  });
+  assert.ok(cost !== null, 'cost should fall back to multiplier 1 for unknown FPS, not null');
+  assert.ok(typeof cost === 'number' && cost > 0, 'cost must be a positive number');
+});
+
