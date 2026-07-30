@@ -57,21 +57,21 @@ function Home({ onCreate, onSignIn }: { onCreate: () => void; onSignIn: () => vo
       {/* Hero Section */}
       <section className="relative pt-40 pb-32 px-6 flex flex-col items-center justify-center min-h-[90vh] overflow-hidden mt-16 border-b border-[var(--text)]/5">
         {/* Background Video */}
-        <div className="absolute inset-0 z-0 bg-[var(--bg)]">
-          <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/40 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)] via-transparent to-transparent opacity-50"></div>
+        <div className="absolute inset-0 z-0 bg-black">
+          <video src="/media/morphly-hero.mp4" autoPlay loop muted playsInline className="w-full h-full object-cover opacity-100" />
+          <div className="absolute inset-0 bg-black/30"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
+        <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center text-white">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1] drop-shadow-2xl">
             Professional AI Video <br/> in One Click
           </h1>
-          <p className="text-lg text-[var(--text)]/80 max-w-2xl mb-10 leading-relaxed font-medium">
+          <p className="text-lg text-white/80 max-w-2xl mb-10 leading-relaxed font-medium drop-shadow">
             Endless Possibilities. Morphly LTX 2.3 provides a state-of-the-art multimodal video generation model directly to your browser.
           </p>
-          <button onClick={onCreate} className="px-8 py-4 rounded-xl bg-[var(--lime)] text-[var(--bg)] font-bold text-lg hover:brightness-110 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+          <button onClick={onCreate} className="px-8 py-4 rounded-xl bg-[var(--lime)] text-white font-bold text-lg hover:brightness-110 hover:scale-[1.02] transition-all flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
             Get Started Now <ArrowRight className="w-5 h-5" />
           </button>
         </div>
