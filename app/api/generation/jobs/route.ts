@@ -14,6 +14,7 @@ import {
 import { reconcileGenerationJob } from '@/src/lib/generation-reconciliation';
 import { submitRunPodJob } from '@/src/lib/runpod';
 import { createAdminClient } from '@/src/lib/supabase/admin';
+import { enhanceVideoPrompt } from '@/src/lib/gemini-enhancer';
 
 export const dynamic = 'force-dynamic';
 
@@ -332,14 +333,20 @@ export async function POST(request: NextRequest) {
     const frames = calculateFrameCount(durationOption.seconds, presetFps);
     const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647);
     const idempotencyKey = `gen-reserve:${input.clientRequestId}`;
+    
+    let enhancedPrompt = input.prompt;
+    if (env.GEMINI_KEY) {
+      enhancedPrompt = await enhanceVideoPrompt(input.prompt);
+    }
+
     const { data: job, error: jobError } = await admin
       .from('generation_jobs')
       .insert({
         user_id: user.id,
         preset_id: preset.id,
         action: input.mode,
-        title: input.prompt.slice(0, 80),
-        prompt: input.prompt,
+        title: enhancedPrompt.slice(0, 80),
+        prompt: enhancedPrompt,
         negative_prompt: input.negativePrompt || null,
         source_asset_id: sourceAsset?.id ?? null,
         source_asset_path: sourceAsset?.storage_path ?? null,
@@ -421,7 +428,7 @@ export async function POST(request: NextRequest) {
     try {
       const runpodResponse = await submitRunPodJob(job.id, {
         mode: input.mode,
-        prompt: input.prompt,
+        prompt: enhancedPrompt,
         negative_prompt: input.negativePrompt || '',
         frames,
         width: resolution.width,
